@@ -128,7 +128,7 @@ details.adv .inner { margin-top: 14px; }
 .res-head h2 { margin: 0; font-size: 20px; letter-spacing: -.01em; }
 .res-head .sub { color: var(--text-2); font-size: 13px; margin-top: 2px; }
 .res-head .acts { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
-.kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 16px; }
+.kpis { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-bottom: 16px; }
 .kpi { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; }
 .kpi .l { font-size: 12px; color: var(--text-2); display: flex; align-items: center; gap: 6px; }
 .kpi .v { font-size: 22px; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; }
@@ -171,6 +171,14 @@ tbody tr.sel td { background: var(--accent-soft); }
 .stars small { color: var(--text-3); font-weight: 400; }
 .ver { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; color: var(--accent-strong); font-weight: 600; }
 .ver svg.lucide { width: 12px; height: 12px; }
+.ads { display: flex; flex-wrap: wrap; gap: 4px; min-width: 150px; }
+.ad { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: var(--r-sm); border: 1px solid var(--line-strong); color: var(--text-2); background: var(--surface); white-space: nowrap; }
+.ad svg.lucide { width: 12px; height: 12px; }
+.ad-meta { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-strong); }
+.plat { display: block; font-size: 11px; color: var(--text-3); margin-top: 2px; }
+.scan { display: inline-flex; align-items: center; gap: 8px; margin-left: 10px; }
+.scan .bar { width: 120px; height: 4px; background: var(--surface-2); border-radius: 2px; overflow: hidden; }
+.scan .bar i { display: block; height: 100%; background: var(--accent); border-radius: 2px; transition: width .4s; }
 .opp { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: var(--r-sm); background: var(--warn-soft); color: var(--warn); }
 #map { height: 620px; }
 
@@ -567,7 +575,9 @@ function pintarJobs() {
   el.querySelectorAll("[data-rep]").forEach((b) => (b.onclick = () => repetir(b.dataset.rep)));
   el.querySelectorAll("[data-dl]").forEach((b) => (b.onclick = async () => {
     const j = S.jobs.find((x) => x.ID === b.dataset.dl);
-    exportar(await leadsDe(j.ID), j.Name);
+    let tech = {};
+    try { tech = (await api(`/api/v1/jobs/${j.ID}/tech`)).results || {}; } catch (e) {}
+    exportar(await leadsDe(j.ID), j.Name, tech);
   }));
 }
 
@@ -597,13 +607,27 @@ async function repetir(id) {
 }
 
 /* ================= exportar a Excel ================= */
-function exportar(leads, nombre) {
+function siNo(tech, l, k) {
+  if (!l.website) return "Sin web";
+  const t = tech[l.website];
+  if (!t) return "Sin analizar";
+  if (t.status === "social") return "Web = perfil de " + t.social;
+  if (t.status !== "ok") return "No se pudo analizar";
+  if (!t[k] && k === "meta_pixel" && t.unsure) return "No verificable";
+  return t[k] ? "Sí" : "No";
+}
+
+function exportar(leads, nombre, tech = {}) {
   const cols = [
     ["Nombre", (l) => l.title], ["Categoría", (l) => l.category], ["Teléfono", (l) => l.phone],
     ["Móvil (WhatsApp)", (l) => (esMovil(l.phone) ? "Sí" : "No")], ["Email", (l) => (l.emails || []).join(", ")],
     ["Web", (l) => l.website], ["Dirección", (l) => l.address], ["Barrio", (l) => l.borough], ["Ciudad", (l) => l.city],
     ["Valoración", (l) => (l.rating ? String(l.rating.toFixed(1)).replace(".", ",") : "")], ["Nº reseñas", (l) => l.reviews || ""],
-    ["Rango de precios", (l) => l.price_range], ["Ficha verificada", (l) => (l.claimed ? "Sí" : "No")], ["Google Maps", (l) => l.link],
+    ["Rango de precios", (l) => l.price_range],
+    ["Píxel de Meta", (l) => siNo(tech, l, "meta_pixel")], ["ID píxel de Meta", (l) => ((tech[l.website] || {}).meta_ids || []).join(", ")],
+    ["Google Ads", (l) => siNo(tech, l, "google_ads")], ["Google Analytics", (l) => siNo(tech, l, "analytics")],
+    ["TikTok Ads", (l) => siNo(tech, l, "tiktok")], ["LinkedIn Ads", (l) => siNo(tech, l, "linkedin")],
+    ["Plataforma web", (l) => (tech[l.website] || {}).platform || ""], ["Ficha verificada", (l) => (l.claimed ? "Sí" : "No")], ["Google Maps", (l) => l.link],
   ];
   const cel = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const csv = "﻿" + [cols.map((c) => cel(c[0])).join(";"), ...leads.map((l) => cols.map((c) => cel(c[1](l))).join(";"))].join("\r\n");
@@ -627,8 +651,8 @@ async function verResultados(id) {
     $("#view").innerHTML = `<div class="empty"><div class="ico"><i data-lucide="circle-x"></i></div><h3>No se encontró la búsqueda</h3><p><a href="#">Volver a mis búsquedas</a></p></div>`;
     return icons();
   }
-  S.res = { job, leads, tab: "lista", sel: null, map: null,
-    f: { q: "", cat: "", tel: false, movil: false, email: false, web: false, sinweb: false, min: 0, orden: "reviews" } };
+  S.res = { job, leads, tab: "lista", sel: null, map: null, tech: { status: "idle", results: {} },
+    f: { q: "", cat: "", tel: false, movil: false, email: false, web: false, sinweb: false, meta: false, nometa: false, min: 0, orden: "reviews" } };
   const r = resumen(leads);
   const media = leads.filter((l) => l.rating).reduce((a, l, _, arr) => a + l.rating / arr.length, 0);
   const cats = [...new Set(leads.map((l) => l.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, "es"));
@@ -647,12 +671,7 @@ async function verResultados(id) {
     </div>
   </div>
 
-  <div class="kpis">
-    ${[["store", "Negocios", fmtN(r.total), ""], ["phone", "Con teléfono", fmtN(r.tel), pct(r.tel, r.total)],
-       ["message-circle", "Móvil (WhatsApp)", fmtN(r.movil), pct(r.movil, r.total)], ["mail", "Con email", fmtN(r.email), pct(r.email, r.total)],
-       ["globe", "Sin página web", fmtN(r.sinWeb), pct(r.sinWeb, r.total)], ["star", "Valoración media", media ? media.toFixed(1).replace(".", ",") : "—", "sobre 5"]]
-      .map(([i, l, v, p]) => `<div class="kpi"><div class="l"><i data-lucide="${i}"></i>${l}</div><div class="v">${v}</div><div class="p">${p || "&nbsp;"}</div></div>`).join("")}
-  </div>
+  <div class="kpis" id="kpis"></div>
 
   <div class="card">
     <div class="toolbar">
@@ -672,13 +691,15 @@ async function verResultados(id) {
       <button class="chip" data-k="email"><i data-lucide="mail"></i>Con email</button>
       <button class="chip" data-k="web"><i data-lucide="globe"></i>Con web</button>
       <button class="chip" data-k="sinweb" title="Negocios que aún no tienen página web: candidatos para venderles una"><i data-lucide="lightbulb"></i>Sin web (oportunidad)</button>
+      <button class="chip" data-k="meta" title="Tienen el píxel de Meta instalado: han preparado su web para anunciarse en Facebook e Instagram"><i data-lucide="target"></i>Con píxel de Meta</button>
+      <button class="chip" data-k="nometa" title="Tienen web pero no el píxel de Meta: no miden anuncios de Facebook e Instagram"><i data-lucide="crosshair"></i>Web sin píxel de Meta</button>
     </div>
     <div class="count" id="count"></div>
     <div id="panel"></div>
   </div>`;
   icons();
 
-  $("#dl").onclick = () => exportar(filtrar(), job.Name + (filtrar().length < leads.length ? " (filtrado)" : ""));
+  $("#dl").onclick = () => exportar(filtrar(), job.Name + (filtrar().length < leads.length ? " (filtrado)" : ""), S.res.tech.results || {});
   $("#rep").onclick = () => repetir(id);
   $("#del").onclick = () => borrar(id);
   $("#fq").oninput = (e) => { S.res.f.q = e.target.value; pintarPanel(); };
@@ -690,6 +711,8 @@ async function verResultados(id) {
     S.res.f[k] = !S.res.f[k];
     if (k === "web" && S.res.f.web) S.res.f.sinweb = false;
     if (k === "sinweb" && S.res.f.sinweb) S.res.f.web = false;
+    if (k === "meta" && S.res.f.meta) S.res.f.nometa = false;
+    if (k === "nometa" && S.res.f.nometa) S.res.f.meta = false;
     document.querySelectorAll("#chips .chip").forEach((x) => x.classList.toggle("on", !!S.res.f[x.dataset.k]));
     pintarPanel();
   }));
@@ -699,6 +722,92 @@ async function verResultados(id) {
     pintarPanel();
   }));
   pintarPanel();
+  cargarTech(id, true);
+}
+
+/* ================= publicidad de las webs ================= */
+function techDe(l) { return S.res && l.website ? S.res.tech.results[l.website] : null; }
+
+async function cargarTech(id, arrancar = false, forzar = false) {
+  if (!S.res || S.res.job.ID !== id) return;
+  try {
+    let t = await api(`/api/v1/jobs/${id}/tech`);
+    const conWeb = S.res.leads.some((l) => l.website);
+    if ((arrancar && t.status === "idle" && conWeb) || forzar) t = await api(`/api/v1/jobs/${id}/tech`, { method: "POST" });
+    if (!S.res || S.res.job.ID !== id) return;
+    S.res.tech = t;
+    if (S.res.tab === "lista") pintarPanel(); else { pintarCount(filtrar().length, S.res.leads.length); pintarKpis(); }
+    if (S.res.sel != null && $("#drawer").classList.contains("open")) abrirDetalle(S.res.sel);
+    if (t.status === "running") setTimeout(() => cargarTech(id), 2000);
+  } catch (e) { toast("No se pudieron analizar las webs: " + e.message, true); }
+}
+
+function pintarCount(n, total) {
+  const t = S.res.tech;
+  let scan = "";
+  if (t.status === "running") scan = `<span class="scan"><i data-lucide="loader-circle" class="spin"></i>Analizando publicidad de las webs: ${t.done} de ${t.total}<span class="bar"><i style="width:${t.total ? (t.done / t.total) * 100 : 0}%"></i></span></span>`;
+  else if (t.status === "done") scan = `<span class="scan"><i data-lucide="circle-check"></i>Webs analizadas: ${t.total}<button class="btn btn-ghost btn-sm" id="reTech" title="Volver a revisar las webs"><i data-lucide="refresh-cw"></i>Volver a analizar</button></span>`;
+  $("#count").innerHTML = (n === total ? `${fmtN(total)} negocios` : `Mostrando ${fmtN(n)} de ${fmtN(total)} negocios`) + scan;
+  icons();
+  const b = $("#reTech");
+  if (b) b.onclick = () => cargarTech(S.res.job.ID, false, true);
+}
+
+function pintarKpis() {
+  const { leads } = S.res;
+  const r = resumen(leads);
+  const media = leads.filter((l) => l.rating).reduce((a, l, _, arr) => a + l.rating / arr.length, 0);
+  const t = S.res.tech;
+  const analizadas = leads.filter((l) => { const x = techDe(l); return x && x.status === "ok"; });
+  const meta = analizadas.filter((l) => techDe(l).meta_pixel).length;
+  const metaV = t.status === "idle" ? "—" : t.status === "running" && !analizadas.length ? "…" : fmtN(meta);
+  const metaP = analizadas.length ? `${pct(meta, analizadas.length)} de las webs` : t.status === "running" ? "analizando…" : "";
+  $("#kpis").innerHTML = [["store", "Negocios", fmtN(r.total), ""], ["phone", "Con teléfono", fmtN(r.tel), pct(r.tel, r.total)],
+    ["message-circle", "Móvil (WhatsApp)", fmtN(r.movil), pct(r.movil, r.total)], ["mail", "Con email", fmtN(r.email), pct(r.email, r.total)],
+    ["globe", "Sin página web", fmtN(r.sinWeb), pct(r.sinWeb, r.total)], ["target", "Con píxel de Meta", metaV, metaP],
+    ["star", "Valoración media", media ? media.toFixed(1).replace(".", ",") : "—", "sobre 5"]]
+    .map(([i, l, v, p]) => `<div class="kpi"><div class="l"><i data-lucide="${i}"></i>${l}</div><div class="v">${v}</div><div class="p">${p || "&nbsp;"}</div></div>`).join("");
+  icons();
+}
+
+function celdaPublicidad(l) {
+  if (!l.website) return `<span class="none">—</span>`;
+  const t = techDe(l);
+  if (!t) return S.res.tech.status === "running" ? `<span class="none">Analizando…</span>` : `<span class="none">Sin analizar</span>`;
+  if (t.status === "social") return `<span class="none">Su «web» es un perfil de ${esc(t.social)}</span>`;
+  if (t.status !== "ok") return `<span class="none" title="${esc(t.error || "")}">No se pudo revisar</span>`;
+  const tags = [];
+  if (t.meta_pixel) tags.push(`<span class="ad ad-meta" title="${esc((t.meta_ids || []).join(", "))}"><i data-lucide="target"></i>Píxel de Meta</span>`);
+  if (t.google_ads) tags.push(`<span class="ad">Google Ads</span>`);
+  if (t.tiktok) tags.push(`<span class="ad">TikTok</span>`);
+  if (t.linkedin) tags.push(`<span class="ad">LinkedIn</span>`);
+  if (t.analytics) tags.push(`<span class="ad">Analytics</span>`);
+  if (!t.meta_pixel && t.unsure) tags.unshift(`<span class="ad" title="${esc(t.unsure)}">Píxel de Meta: no verificable</span>`);
+  return tags.length ? `<div class="ads">${tags.join("")}</div>` : `<span class="none">Sin etiquetas de publicidad</span>`;
+}
+
+function seccionPublicidad(l) {
+  const biblioteca = `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=ALL&search_type=keyword_unordered&q=${encodeURIComponent(l.title)}`;
+  const enlace = `<div style="margin-top:10px"><a href="${biblioteca}" target="_blank" rel="noopener"><i data-lucide="external-link" style="width:13px;height:13px;vertical-align:-2px"></i> Ver si tiene anuncios activos en la Biblioteca de anuncios de Meta</a><div class="hint">Tener el píxel indica que su web está preparada para medir anuncios de Facebook e Instagram; no garantiza que esté anunciándose ahora.</div></div>`;
+  if (!l.website) return `<div class="sec"><h4>Publicidad y medición</h4><p class="none" style="margin:0">No tiene web que revisar.</p>${enlace}</div>`;
+  const t = techDe(l);
+  let cuerpo;
+  if (!t) cuerpo = `<p class="none" style="margin:0">${S.res.tech.status === "running" ? "Analizando su web…" : "Sin analizar."}</p>`;
+  else if (t.status === "social") cuerpo = `<p style="margin:0">Su «web» en Google es un perfil de <b>${esc(t.social)}</b>: no tiene página propia.</p>`;
+  else if (t.status !== "ok") cuerpo = `<p class="none" style="margin:0">No se pudo revisar: ${esc(t.error || "error")}.</p>`;
+  else {
+    const si = (v, extra = "") => v === null ? "" : v ? `<b style="color:var(--ok)">Sí</b>${extra}` : `<span class="none">No</span>`;
+    const fila = (ic, k, v) => `<i data-lucide="${ic}"></i><div><div class="k">${k}</div>${v}</div>`;
+    cuerpo = `<div class="dl">
+      ${fila("target", "Píxel de Meta (Facebook / Instagram)", (!t.meta_pixel && t.unsure ? `<span class="none">No verificable</span><div class="none">${esc(t.unsure)}</div>` : "") + si(t.meta_pixel || !t.unsure ? t.meta_pixel : null, (t.meta_ids || []).length ? ` · ID ${t.meta_ids.map(esc).join(", ")}` : "") + (t.meta_via_gtm ? `<div class="none">Instalado a través de Google Tag Manager</div>` : ""))}
+      ${fila("badge-dollar-sign", "Google Ads", si(t.google_ads, (t.google_ads_ids || []).length ? " · " + t.google_ads_ids.map(esc).join(", ") : ""))}
+      ${fila("chart-line", "Google Analytics", si(t.analytics))}
+      ${fila("music-2", "TikTok Ads", si(t.tiktok))}
+      ${fila("briefcase", "LinkedIn Ads", si(t.linkedin))}
+      ${fila("layout-template", "Hecha con", t.platform ? esc(t.platform) : `<span class="none">No identificado</span>`)}
+    </div>`;
+  }
+  return `<div class="sec"><h4>Publicidad y medición</h4>${cuerpo}${enlace}</div>`;
 }
 
 function filtrar() {
@@ -712,6 +821,8 @@ function filtrar() {
     if (f.web && !l.website) return false;
     if (f.sinweb && l.website) return false;
     if (f.min && l.rating < f.min) return false;
+    if (f.meta && !(techDe(l) || {}).meta_pixel) return false;
+    if (f.nometa) { const t = techDe(l); if (!t || t.status !== "ok" || t.meta_pixel) return false; }
     if (q && ![l.title, l.address, l.category, l.phone, l.website, (l.emails || []).join(" "), l.borough].join(" ").toLowerCase().includes(q)) return false;
     return true;
   });
@@ -722,7 +833,8 @@ function filtrar() {
 function pintarPanel() {
   const lista = filtrar();
   const total = S.res.leads.length;
-  $("#count").textContent = lista.length === total ? `${fmtN(total)} negocios` : `Mostrando ${fmtN(lista.length)} de ${fmtN(total)} negocios`;
+  pintarCount(lista.length, total);
+  pintarKpis();
   if (S.res.map) { S.res.map.remove(); S.res.map = null; }
 
   if (!lista.length) {
@@ -749,7 +861,7 @@ function pintarPanel() {
   }
 
   $("#panel").innerHTML = `<div class="tbl-wrap"><table>
-    <thead><tr><th>Negocio</th><th>Contacto</th><th>Web</th><th>Valoración</th><th>Zona</th></tr></thead>
+    <thead><tr><th>Negocio</th><th>Contacto</th><th>Web</th><th>Publicidad</th><th>Valoración</th><th>Zona</th></tr></thead>
     <tbody>${lista.map((l) => {
       const i = S.res.leads.indexOf(l);
       const movil = esMovil(l.phone);
@@ -764,7 +876,8 @@ function pintarPanel() {
             ${movil ? `<a class="wa" href="${waLink(l.phone)}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><i data-lucide="message-circle"></i>WhatsApp</a>` : ""}</div>` : `<div class="none"><i data-lucide="phone-off"></i>Sin teléfono</div>`}
           ${(l.emails || []).length ? l.emails.map((m) => `<div><i data-lucide="mail"></i><a href="mailto:${esc(m)}" onclick="event.stopPropagation()">${esc(m)}</a></div>`).join("") : `<div class="none"><i data-lucide="mail-x"></i>Sin email</div>`}
         </div></td>
-        <td>${l.website ? `<a href="${esc(l.website)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(dominio(l.website))}</a>` : `<span class="opp"><i data-lucide="lightbulb"></i>Sin web</span>`}</td>
+        <td>${l.website ? `<a href="${esc(l.website)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(dominio(l.website))}</a>${(techDe(l) || {}).platform ? `<span class="plat">${esc(techDe(l).platform)}</span>` : ""}` : `<span class="opp"><i data-lucide="lightbulb"></i>Sin web</span>`}</td>
+        <td>${celdaPublicidad(l)}</td>
         <td>${l.rating ? `<span class="stars"><i data-lucide="star"></i>${l.rating.toFixed(1).replace(".", ",")} <small>(${fmtN(l.reviews)})</small></span>` : `<span class="none">Sin reseñas</span>`}</td>
         <td>${esc(l.borough || l.city || "")}</td>
       </tr>`;
@@ -806,6 +919,7 @@ function abrirDetalle(i) {
         ${fila("badge-check", "Ficha de Google", l.claimed ? "Verificada por el propietario" : `<span class="none">Sin reclamar por el propietario</span>`)}
       </div>
       ${l.description ? `<div class="sec"><h4>Descripción</h4><p style="margin:0">${esc(l.description)}</p></div>` : ""}
+      ${seccionPublicidad(l)}
       <div class="sec"><h4>Horario</h4>${horas}</div>
       ${enlaces.length ? `<div class="sec"><h4>Enlaces</h4><div class="dl">${enlaces.map(([ic, t, u]) => `<i data-lucide="${ic}"></i><div><a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)}</a></div>`).join("")}</div></div>` : ""}
     </div>

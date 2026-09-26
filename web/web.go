@@ -117,6 +117,10 @@ func New(svc *Service, addr string) (*Server, error) {
 		ans.apiGetLeads(w, requestWithID(r))
 	})
 
+	mux.HandleFunc("/api/v1/jobs/{id}/tech", func(w http.ResponseWriter, r *http.Request) {
+		ans.apiTech(w, requestWithID(r))
+	})
+
 	mux.HandleFunc("/api/v1/jobs/{id}/download", func(w http.ResponseWriter, r *http.Request) {
 		r = requestWithID(r)
 

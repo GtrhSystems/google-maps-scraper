@@ -115,6 +115,10 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 		return err
 	}
 
+	if techPath, err := s.techPath(id); err == nil {
+		_ = os.Remove(techPath)
+	}
+
 	return s.repo.Delete(ctx, id)
 }
 

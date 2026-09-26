@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -131,7 +132,7 @@ func parseLeads(r io.Reader) ([]Lead, error) {
 		lead.Longitude, _ = strconv.ParseFloat(get(row, "longitude"), 64)
 
 		for _, e := range strings.Split(get(row, "emails"), ",") {
-			if e = strings.TrimSpace(e); e != "" {
+			if e = strings.TrimSpace(e); validEmail(e) {
 				lead.Emails = append(lead.Emails, e)
 			}
 		}
@@ -166,6 +167,17 @@ func parseLeads(r io.Reader) ([]Lead, error) {
 	}
 
 	return leads, nil
+}
+
+var (
+	reEmail      = regexp.MustCompile(`^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,24}$`)
+	reFakeDomain = regexp.MustCompile(`(?i)\.(png|jpe?g|gif|svg|webp|avif|bmp|ico|css|js)$|@\dx\.|sentry|wixpress\.com$|example\.(com|org)$|domain\.com$`)
+)
+
+// validEmail rejects what the scraper picks up from image names (logo@2x.png)
+// and placeholder or tracking addresses.
+func validEmail(e string) bool {
+	return reEmail.MatchString(e) && !reFakeDomain.MatchString(e)
 }
 
 // cleanLinks drops empty entries and Google's own redirect links, which are
