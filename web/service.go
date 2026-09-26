@@ -119,6 +119,10 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 		_ = os.Remove(techPath)
 	}
 
+	if socialPath, err := s.socialPath(id); err == nil {
+		_ = os.Remove(socialPath)
+	}
+
 	return s.repo.Delete(ctx, id)
 }
 

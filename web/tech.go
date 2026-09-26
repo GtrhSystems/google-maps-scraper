@@ -18,21 +18,23 @@ import (
 // Tech is what a business's website reveals about its marketing: the ad and
 // analytics tags it carries and the platform it is built on.
 type Tech struct {
-	Status      string   `json:"status"` // ok | social | error
-	Error       string   `json:"error,omitempty"`
-	FinalURL    string   `json:"final_url,omitempty"`
-	MetaPixel   bool     `json:"meta_pixel"`
-	MetaIDs     []string `json:"meta_ids,omitempty"`
-	MetaViaGTM  bool     `json:"meta_via_gtm,omitempty"`
-	GoogleAds   bool     `json:"google_ads"`
-	GoogleAdsID []string `json:"google_ads_ids,omitempty"`
-	Analytics   bool     `json:"analytics"`
-	TagManager  bool     `json:"tag_manager"`
-	TikTok      bool     `json:"tiktok"`
-	LinkedIn    bool     `json:"linkedin"`
-	Platform    string   `json:"platform,omitempty"`
-	Unsure      string   `json:"unsure,omitempty"` // why a missing pixel cannot be confirmed
-	Social      string   `json:"social,omitempty"` // the "website" is really a social profile
+	Status      string            `json:"status"` // ok | social | thirdparty | error
+	Error       string            `json:"error,omitempty"`
+	FinalURL    string            `json:"final_url,omitempty"`
+	MetaPixel   bool              `json:"meta_pixel"`
+	MetaIDs     []string          `json:"meta_ids,omitempty"`
+	MetaViaGTM  bool              `json:"meta_via_gtm,omitempty"`
+	GoogleAds   bool              `json:"google_ads"`
+	GoogleAdsID []string          `json:"google_ads_ids,omitempty"`
+	Analytics   bool              `json:"analytics"`
+	TagManager  bool              `json:"tag_manager"`
+	TikTok      bool              `json:"tiktok"`
+	LinkedIn    bool              `json:"linkedin"`
+	Platform    string            `json:"platform,omitempty"`
+	Unsure      string            `json:"unsure,omitempty"` // why a missing pixel cannot be confirmed
+	Social      string            `json:"social,omitempty"` // the "website" is really a social profile
+	Socials     map[string]string `json:"socials,omitempty"`
+	Chats       []ChatTool        `json:"chats,omitempty"`
 }
 
 // TechScan is the per-job analysis state, persisted as {id}.tech.json.
@@ -70,6 +72,17 @@ var (
 		"facebook.com": "Facebook", "m.facebook.com": "Facebook", "fb.com": "Facebook",
 		"instagram.com": "Instagram", "wa.me": "WhatsApp", "api.whatsapp.com": "WhatsApp",
 		"linktr.ee": "Linktree", "tiktok.com": "TikTok", "twitter.com": "X", "x.com": "X",
+	}
+
+	thirdPartyHosts = map[string]string{
+		"apparta.co": "Apparta", "precompro.com": "Precompro", "rappi.com": "Rappi", "rappi.com.co": "Rappi",
+		"ubereats.com": "Uber Eats", "didi-food.com": "DiDi Food", "opentable.com": "OpenTable", "thefork.com": "TheFork",
+		"eltenedor.es": "El Tenedor", "covermanager.com": "CoverManager", "booksy.com": "Booksy", "fresha.com": "Fresha",
+		"treatwell.es": "Treatwell", "doctoralia.co": "Doctoralia", "doctoralia.es": "Doctoralia", "glovoapp.com": "Glovo",
+		"justeat.es": "Just Eat", "pedidosya.com": "PedidosYa", "ifood.com.br": "iFood", "beacons.ai": "Beacons",
+		"taplink.cc": "Taplink", "wa.link": "WhatsApp", "calendly.com": "Calendly", "agendapro.com": "AgendaPro",
+		"weibook.co": "Weibook", "mesa247.com": "Mesa 24/7", "restorando.com": "Restorando", "tripadvisor.com": "Tripadvisor",
+		"tripadvisor.es": "Tripadvisor", "tripadvisor.co": "Tripadvisor", "linkr.bio": "Linkr", "bio.link": "Bio.link",
 	}
 
 	techMu    sync.Mutex
@@ -161,7 +174,15 @@ func analyzeSite(ctx context.Context, raw string) *Tech {
 	}
 
 	if name, ok := socialHosts[host]; ok {
-		return &Tech{Status: "social", Social: name}
+		return &Tech{Status: "social", Social: name, Socials: socialFromURL(raw)}
+	}
+
+	// Booking and delivery platforms: their tags and social links belong to the
+	// platform, not to the business.
+	for suffix, name := range thirdPartyHosts {
+		if host == suffix || strings.HasSuffix(host, "."+suffix) {
+			return &Tech{Status: "thirdparty", Social: name}
+		}
 	}
 
 	c := techClient()
@@ -183,11 +204,13 @@ func analyzeSite(ctx context.Context, raw string) *Tech {
 	t.FinalURL = final
 	if fu, e := url.Parse(final); e == nil {
 		if name, ok := socialHosts[strings.TrimPrefix(strings.ToLower(fu.Hostname()), "www.")]; ok {
-			return &Tech{Status: "social", Social: name}
+			return &Tech{Status: "social", Social: name, Socials: socialFromURL(final)}
 		}
 	}
 
 	low := strings.ToLower(body)
+	t.Socials = extractSocials(body)
+	chatText := low
 
 	t.MetaIDs = metaIDs(body)
 	t.MetaPixel = reMetaScript.MatchString(body) || len(t.MetaIDs) > 0
@@ -230,7 +253,10 @@ func analyzeSite(ctx context.Context, raw string) *Tech {
 		t.Analytics = t.Analytics || (strings.Contains(js, "G-") && strings.Contains(js, "google-analytics"))
 		t.TikTok = t.TikTok || reTikTok.MatchString(js)
 		t.LinkedIn = t.LinkedIn || reLinkedIn.MatchString(js)
+		chatText += strings.ToLower(js)
 	}
+
+	t.Chats = detectChats(chatText)
 
 	t.GoogleAds = len(t.GoogleAdsID) > 0
 

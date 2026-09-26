@@ -121,6 +121,10 @@ func New(svc *Service, addr string) (*Server, error) {
 		ans.apiTech(w, requestWithID(r))
 	})
 
+	mux.HandleFunc("/api/v1/jobs/{id}/social", func(w http.ResponseWriter, r *http.Request) {
+		ans.apiSocial(w, requestWithID(r))
+	})
+
 	mux.HandleFunc("/api/v1/jobs/{id}/download", func(w http.ResponseWriter, r *http.Request) {
 		r = requestWithID(r)
 
@@ -719,7 +723,7 @@ func securityHeaders(next http.Handler) http.Handler {
 				"script-src 'self' cdn.redoc.ly cdnjs.cloudflare.com 'unsafe-inline' 'unsafe-eval'; "+
 				"worker-src 'self' blob:; "+
 				"style-src 'self' 'unsafe-inline' fonts.googleapis.com cdnjs.cloudflare.com; "+
-				"img-src 'self' data: cdn.redoc.ly cdnjs.cloudflare.com *.tile.openstreetmap.org *.googleusercontent.com; "+
+				"img-src 'self' data: cdn.redoc.ly cdnjs.cloudflare.com *.tile.openstreetmap.org *.googleusercontent.com *.googleapis.com; "+
 				"font-src 'self' fonts.gstatic.com; "+
 				"connect-src 'self'")
 

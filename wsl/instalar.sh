@@ -4,7 +4,7 @@
 # En Windows 11 el binario nativo falla ("target closed", incidencia #137 del
 # proyecto original); en Linux funciona.
 set -e
-VERSION=1.18.2-es
+VERSION=1.18.3-es
 mkdir -p /opt/gmaps && cd /opt/gmaps
 if [ -x gmaps ] && [ "$(cat .version 2>/dev/null)" = "$VERSION" ]; then
   exit 0
