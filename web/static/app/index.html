@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buscador de negocios</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="/static/app/lucide.min.js"></script>
+<style>
+:root {
+  --bg: #f5f7f9; --surface: #ffffff; --surface-2: #f0f3f6; --line: #e1e6eb; --line-strong: #cdd5dd;
+  --text: #16202a; --text-2: #4d5b69; --text-3: #7b8896;
+  --accent: #0891a6; --accent-strong: #06798b; --accent-soft: #e3f4f7; --on-accent: #ffffff;
+  --ok: #1e7d4f; --ok-soft: #e4f3ea; --warn: #9a6400; --warn-soft: #fbf1dd; --err: #b3261e; --err-soft: #fbe7e5;
+  --shadow: 0 1px 2px rgba(16,24,40,.05), 0 1px 3px rgba(16,24,40,.06);
+  --r: 8px; --r-sm: 4px;
+}
+:root[data-theme="dark"] {
+  --bg: #0f1419; --surface: #161d24; --surface-2: #1c252e; --line: #26313c; --line-strong: #34414e;
+  --text: #e6ebf0; --text-2: #a6b3bf; --text-3: #75838f;
+  --accent: #2bb3c6; --accent-strong: #52c6d6; --accent-soft: #11313a; --on-accent: #06222a;
+  --ok: #5cc48f; --ok-soft: #10301f; --warn: #e0a84a; --warn-soft: #33260d; --err: #f08a82; --err-soft: #3a1714;
+  --shadow: 0 1px 2px rgba(0,0,0,.3);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--text); font: 14px/1.5 Inter, system-ui, -apple-system, Segoe UI, sans-serif; -webkit-font-smoothing: antialiased; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+svg.lucide { width: 16px; height: 16px; stroke-width: 2; flex: none; }
+button, input, select, textarea { font: inherit; color: inherit; }
+
+/* ---------- barra superior ---------- */
+.topbar { position: sticky; top: 0; z-index: 20; background: var(--surface); border-bottom: 1px solid var(--line); }
+.topbar-in { max-width: 1440px; margin: 0 auto; padding: 12px 24px; display: flex; align-items: center; gap: 12px; }
+.brand-mark { width: 34px; height: 34px; border-radius: var(--r); background: var(--accent); color: var(--on-accent); display: grid; place-items: center; }
+.brand-mark svg.lucide { width: 18px; height: 18px; }
+.brand h1 { font-size: 16px; margin: 0; font-weight: 700; letter-spacing: -.01em; }
+.brand p { margin: 0; font-size: 12px; color: var(--text-3); }
+.topbar .spacer { flex: 1; }
+
+/* ---------- controles ---------- */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 14px; border-radius: var(--r); border: 1px solid var(--line-strong); background: var(--surface); color: var(--text); font-weight: 500; cursor: pointer; white-space: nowrap; text-decoration: none !important; }
+.btn:hover { background: var(--surface-2); }
+.btn:focus-visible, .field:focus-visible, .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn-primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
+.btn-danger { color: var(--err); }
+.btn-danger:hover { background: var(--err-soft); }
+.btn-ghost { border-color: transparent; background: transparent; }
+.btn-sm { height: 30px; padding: 0 10px; font-size: 13px; }
+.btn-icon { width: 36px; padding: 0; }
+.btn-block { width: 100%; height: 42px; font-size: 15px; }
+.btn[disabled] { opacity: .55; cursor: not-allowed; }
+
+.field { width: 100%; border: 1px solid var(--line-strong); background: var(--surface); border-radius: var(--r); padding: 8px 11px; outline: none; }
+.field:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+textarea.field { resize: vertical; min-height: 84px; }
+select.field { height: 36px; padding: 0 10px; }
+.lbl { display: block; font-weight: 600; font-size: 13px; margin-bottom: 6px; }
+.hint { font-size: 12px; color: var(--text-3); margin-top: 5px; }
+
+/* ---------- estructura ---------- */
+.wrap { max-width: 1440px; margin: 0 auto; padding: 24px; }
+.home { display: grid; grid-template-columns: 400px 1fr; gap: 24px; align-items: start; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); }
+.card-h { padding: 16px 20px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; }
+.card-h h2 { font-size: 15px; margin: 0; font-weight: 600; }
+.card-h .muted { color: var(--text-3); font-size: 13px; }
+.card-b { padding: 20px; }
+.stack > * + * { margin-top: 18px; }
+
+/* ---------- formulario ---------- */
+.preview { border: 1px dashed var(--line-strong); border-radius: var(--r); padding: 10px 12px; background: var(--surface-2); }
+.preview-t { font-size: 12px; color: var(--text-2); margin-bottom: 6px; display: flex; gap: 6px; align-items: center; }
+.preview ul { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+.preview li { font-size: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 2px 8px; }
+.options { display: grid; gap: 8px; }
+.option { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--line-strong); border-radius: var(--r); padding: 10px 12px; cursor: pointer; }
+.option:hover { background: var(--surface-2); }
+.option input { margin-top: 3px; accent-color: var(--accent); }
+.option.sel { border-color: var(--accent); background: var(--accent-soft); }
+.option b { display: block; font-size: 13px; }
+.option span { font-size: 12px; color: var(--text-2); }
+.switch-row { display: flex; gap: 12px; align-items: flex-start; }
+.switch { position: relative; width: 38px; height: 22px; flex: none; margin-top: 1px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.switch i { position: absolute; inset: 0; background: var(--line-strong); border-radius: var(--r-sm); transition: .15s; cursor: pointer; }
+.switch i::before { content: ""; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: #fff; border-radius: 2px; transition: .15s; }
+.switch input:checked + i { background: var(--accent); }
+.switch input:checked + i::before { transform: translateX(16px); }
+details.adv summary { cursor: pointer; font-weight: 600; font-size: 13px; color: var(--text-2); list-style: none; display: flex; align-items: center; gap: 6px; }
+details.adv summary::-webkit-details-marker { display: none; }
+details.adv[open] summary .chev { transform: rotate(90deg); }
+details.adv .inner { margin-top: 14px; }
+
+/* ---------- lista de búsquedas ---------- */
+.jobs { display: grid; gap: 10px; }
+.job { border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; display: grid; grid-template-columns: 1fr auto; gap: 8px 16px; align-items: center; background: var(--surface); }
+.job:hover { border-color: var(--line-strong); }
+.job-t { font-weight: 600; font-size: 14px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.job-k { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+.job-m { font-size: 12px; color: var(--text-3); display: flex; gap: 14px; flex-wrap: wrap; margin-top: 6px; }
+.job-m span { display: inline-flex; align-items: center; gap: 5px; }
+.job-m svg.lucide { width: 13px; height: 13px; }
+.job-a { display: flex; gap: 6px; }
+.tag { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: var(--r-sm); border: 1px solid transparent; }
+.tag svg.lucide { width: 13px; height: 13px; }
+.tag-ok { background: var(--ok-soft); color: var(--ok); }
+.tag-run { background: var(--accent-soft); color: var(--accent-strong); }
+.tag-wait { background: var(--surface-2); color: var(--text-2); border-color: var(--line); }
+.tag-warn { background: var(--warn-soft); color: var(--warn); }
+.tag-err { background: var(--err-soft); color: var(--err); }
+.progress { grid-column: 1 / -1; height: 4px; background: var(--surface-2); border-radius: 2px; overflow: hidden; }
+.progress i { display: block; height: 100%; background: var(--accent); border-radius: 2px; transition: width .5s; }
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.empty { text-align: center; padding: 48px 20px; color: var(--text-2); }
+.empty .ico { width: 44px; height: 44px; border-radius: var(--r); background: var(--surface-2); display: grid; place-items: center; margin: 0 auto 12px; color: var(--text-3); }
+.empty h3 { margin: 0 0 4px; font-size: 15px; color: var(--text); }
+.empty p { margin: 0; font-size: 13px; }
+
+/* ---------- resultados ---------- */
+.res-head { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 18px; flex-wrap: wrap; }
+.res-head h2 { margin: 0; font-size: 20px; letter-spacing: -.01em; }
+.res-head .sub { color: var(--text-2); font-size: 13px; margin-top: 2px; }
+.res-head .acts { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+.kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 16px; }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; }
+.kpi .l { font-size: 12px; color: var(--text-2); display: flex; align-items: center; gap: 6px; }
+.kpi .v { font-size: 22px; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.kpi .p { font-size: 12px; color: var(--text-3); }
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.search { position: relative; flex: 1 1 240px; }
+.search svg.lucide { position: absolute; left: 10px; top: 10px; color: var(--text-3); }
+.search .field { padding-left: 32px; height: 36px; }
+.toolbar select.field { width: auto; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 16px; border-bottom: 1px solid var(--line); align-items: center; }
+.chips .t { font-size: 12px; color: var(--text-3); margin-right: 4px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: var(--r); border: 1px solid var(--line-strong); background: var(--surface); font-size: 13px; cursor: pointer; }
+.chip:hover { background: var(--surface-2); }
+.chip.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-strong); font-weight: 600; }
+.chip svg.lucide { width: 14px; height: 14px; }
+.tabs { display: flex; gap: 2px; margin-left: auto; background: var(--surface-2); border-radius: var(--r); padding: 3px; }
+.tab { height: 30px; padding: 0 12px; border: 0; background: transparent; border-radius: 6px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; color: var(--text-2); font-weight: 500; }
+.tab.on { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+.count { padding: 10px 16px; font-size: 12px; color: var(--text-3); border-bottom: 1px solid var(--line); }
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-size: 12px; font-weight: 600; color: var(--text-2); padding: 10px 16px; background: var(--surface-2); border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 12px 16px; border-bottom: 1px solid var(--line); vertical-align: top; font-size: 13px; }
+tbody tr { cursor: pointer; }
+tbody tr:hover td { background: var(--surface-2); }
+tbody tr.sel td { background: var(--accent-soft); }
+.biz { display: flex; gap: 12px; align-items: flex-start; min-width: 240px; }
+.thumb { width: 44px; height: 44px; border-radius: var(--r-sm); object-fit: cover; background: var(--surface-2); flex: none; display: grid; place-items: center; color: var(--text-3); }
+.biz b { display: block; font-size: 13px; }
+.biz .c { color: var(--text-2); font-size: 12px; }
+.contact { display: grid; gap: 4px; min-width: 190px; }
+.contact div { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.contact a[href^="tel:"] { white-space: nowrap; }
+.contact svg.lucide { width: 14px; height: 14px; color: var(--text-3); }
+.none { color: var(--text-3); }
+.wa { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: var(--r-sm); background: var(--ok-soft); color: var(--ok) !important; }
+.wa svg.lucide { width: 12px; height: 12px; color: var(--ok) !important; }
+.stars { display: inline-flex; gap: 4px; align-items: center; font-weight: 600; white-space: nowrap; }
+.stars svg.lucide { width: 14px; height: 14px; color: #d99a06; fill: #d99a06; }
+.stars small { color: var(--text-3); font-weight: 400; }
+.ver { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; color: var(--accent-strong); font-weight: 600; }
+.ver svg.lucide { width: 12px; height: 12px; }
+.opp { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: var(--r-sm); background: var(--warn-soft); color: var(--warn); }
+#map { height: 620px; }
+
+/* ---------- panel de detalle ---------- */
+.drawer-bg { position: fixed; inset: 0; background: rgba(10,15,20,.35); z-index: 40; display: none; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 460px; max-width: 100%; background: var(--surface); border-left: 1px solid var(--line); z-index: 41; transform: translateX(100%); transition: transform .2s ease; display: flex; flex-direction: column; }
+.drawer.open { transform: none; }
+.drawer.open ~ .drawer-bg, .drawer-bg.open { display: block; }
+.drawer-h { padding: 16px 20px; border-bottom: 1px solid var(--line); display: flex; gap: 10px; align-items: flex-start; }
+.drawer-h h3 { margin: 0; font-size: 17px; }
+.drawer-h .c { font-size: 13px; color: var(--text-2); }
+.drawer-b { padding: 20px; overflow-y: auto; flex: 1; }
+.drawer-b .photo { width: 100%; height: 180px; object-fit: cover; border-radius: var(--r); background: var(--surface-2); margin-bottom: 16px; }
+.dl { display: grid; grid-template-columns: 22px 1fr; gap: 10px 8px; align-items: start; }
+.dl > svg.lucide { margin-top: 2px; color: var(--text-3); }
+.dl .k { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: .04em; }
+.sec { margin-top: 22px; }
+.sec h4 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); }
+.hours { width: 100%; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.hours td { padding: 6px 12px; font-size: 13px; }
+.hours tr:last-child td { border-bottom: 0; }
+.hours tr.today td { font-weight: 700; background: var(--accent-soft); }
+.drawer-f { padding: 14px 20px; border-top: 1px solid var(--line); display: flex; gap: 8px; }
+
+/* ---------- modal y avisos ---------- */
+.modal-bg { position: fixed; inset: 0; background: rgba(10,15,20,.45); z-index: 60; display: none; place-items: center; padding: 16px; }
+.modal-bg.open { display: grid; }
+.modal { background: var(--surface); border-radius: var(--r); border: 1px solid var(--line); width: 420px; max-width: 100%; box-shadow: 0 20px 50px rgba(0,0,0,.2); }
+.modal .mb { padding: 20px; display: flex; gap: 14px; }
+.modal .mi { width: 40px; height: 40px; border-radius: var(--r); background: var(--err-soft); color: var(--err); display: grid; place-items: center; flex: none; }
+.modal h3 { margin: 0 0 4px; font-size: 16px; }
+.modal p { margin: 0; color: var(--text-2); font-size: 13px; }
+.modal .mf { padding: 12px 20px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 8px; background: var(--surface-2); border-radius: 0 0 var(--r) var(--r); }
+.toasts { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 70; display: grid; gap: 8px; }
+.toast { background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: var(--r); font-size: 13px; display: flex; gap: 8px; align-items: center; box-shadow: 0 8px 24px rgba(0,0,0,.2); }
+.toast.err { background: var(--err); color: #fff; }
+
+@media (max-width: 1100px) { .home { grid-template-columns: 1fr; } .kpis { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 640px) {
+  .wrap { padding: 16px; } .topbar-in { padding: 10px 16px; } .kpis { grid-template-columns: repeat(2, 1fr); }
+  .job { grid-template-columns: 1fr; } .tabs { margin-left: 0; } .brand p { display: none; }
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="brand-mark"><i data-lucide="map-pinned"></i></div>
+    <div class="brand">
+      <h1>Buscador de negocios</h1>
+      <p>Clientes potenciales desde Google Maps: teléfono, email, web y valoraciones</p>
+    </div>
+    <div class="spacer"></div>
+    <a class="btn btn-ghost btn-sm" href="/api/docs" target="_blank" rel="noopener" title="Documentación técnica de la API">
+      <i data-lucide="code-xml"></i><span>API</span>
+    </a>
+    <button class="btn btn-icon btn-ghost" id="themeBtn" title="Cambiar modo claro / oscuro"><i data-lucide="moon"></i></button>
+  </div>
+</header>
+
+<main class="wrap" id="view"></main>
+
+<aside class="drawer" id="drawer" aria-hidden="true"></aside>
+<div class="drawer-bg" id="drawerBg"></div>
+
+<div class="modal-bg" id="modal">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="mb">
+      <div class="mi"><i data-lucide="trash-2"></i></div>
+      <div><h3 id="modalT"></h3><p id="modalP"></p></div>
+    </div>
+    <div class="mf">
+      <button class="btn" id="modalNo">Cancelar</button>
+      <button class="btn btn-primary" id="modalYes" style="background:var(--err);border-color:var(--err);color:#fff">Eliminar</button>
+    </div>
+  </div>
+</div>
+<div class="toasts" id="toasts"></div>
+
+<script>
+"use strict";
+
+/* ================= utilidades ================= */
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const icons = () => window.lucide && lucide.createIcons();
+const fmtN = (n) => new Intl.NumberFormat("es").format(n);
+const fmtDate = (d) => new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(d));
+const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0) + " %";
+
+function toast(msg, err = false) {
+  const t = document.createElement("div");
+  t.className = "toast" + (err ? " err" : "");
+  t.innerHTML = `<i data-lucide="${err ? "circle-alert" : "check"}"></i><span>${esc(msg)}</span>`;
+  $("#toasts").appendChild(t);
+  icons();
+  setTimeout(() => t.remove(), 3500);
+}
+
+function confirmar(titulo, texto) {
+  return new Promise((ok) => {
+    $("#modalT").textContent = titulo;
+    $("#modalP").textContent = texto;
+    $("#modal").classList.add("open");
+    const fin = (v) => { $("#modal").classList.remove("open"); $("#modalYes").onclick = $("#modalNo").onclick = null; ok(v); };
+    $("#modalYes").onclick = () => fin(true);
+    $("#modalNo").onclick = () => fin(false);
+  });
+}
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, opts);
+  if (!r.ok) {
+    let m = r.statusText;
+    try { m = (await r.json()).message || m; } catch (e) {}
+    throw new Error(m);
+  }
+  const txt = await r.text();
+  return txt ? JSON.parse(txt) : null;
+}
+
+/* tema claro / oscuro */
+function aplicarTema(t) {
+  document.documentElement.dataset.theme = t;
+  $("#themeBtn").innerHTML = `<i data-lucide="${t === "dark" ? "sun" : "moon"}"></i>`;
+  icons();
+}
+(() => {
+  let t = null;
+  try { t = localStorage.getItem("tema"); } catch (e) {}
+  aplicarTema(t || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+  $("#themeBtn").onclick = () => {
+    const n = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    try { localStorage.setItem("tema", n); } catch (e) {}
+    aplicarTema(n);
+  };
+})();
+
+/* ================= teléfonos ================= */
+// Móvil = puede tener WhatsApp. Reglas por país para los mercados con los que trabajamos.
+function digitos(p) { return (p || "").replace(/[^\d+]/g, ""); }
+function esMovil(p) {
+  const d = digitos(p);
+  if (/^\+573\d{9}$/.test(d)) return true;           // Colombia
+  if (/^\+34[67]\d{8}$/.test(d)) return true;         // España
+  if (/^\+521?\d{10}$/.test(d)) return true;          // México (todas las líneas usan WhatsApp)
+  if (/^\+519\d{8}$/.test(d)) return true;            // Perú
+  if (/^\+569\d{8}$/.test(d)) return true;            // Chile
+  if (/^\+549\d{10}$/.test(d)) return true;           // Argentina
+  if (/^\+593 ?9\d{8}$/.test(d)) return true;         // Ecuador
+  return false;
+}
+const waLink = (p) => "https://wa.me/" + digitos(p).replace("+", "");
+const dominio = (u) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch (e) { return u; } };
+
+/* ================= estado ================= */
+const S = {
+  jobs: [], leadsCache: {}, poll: null,
+  res: null, // { job, leads, f: filtros, tab, map }
+};
+
+const COBERTURA = {
+  1: { t: "Rápida", d: "Los primeros resultados de cada búsqueda (unos 20). Ideal para probar.", min: 10 },
+  5: { t: "Normal", d: "Hasta unos 60 negocios por búsqueda.", min: 20 },
+  10: { t: "A fondo", d: "Todo lo que muestre Google Maps (hasta unos 120 por búsqueda). Tarda más.", min: 40 },
+};
+
+const ESTADO = {
+  pending: { c: "tag-wait", i: "clock", t: "En cola" },
+  working: { c: "tag-run", i: "loader-circle", t: "Buscando…" },
+  ok: { c: "tag-ok", i: "circle-check", t: "Terminada" },
+  empty: { c: "tag-warn", i: "circle-alert", t: "Sin resultados" },
+  failed: { c: "tag-err", i: "circle-x", t: "Error" },
+};
+
+/* ================= enrutado ================= */
+window.addEventListener("hashchange", enrutar);
+function enrutar() {
+  const m = location.hash.match(/^#\/busqueda\/([\w-]+)/);
+  cerrarDetalle();
+  if (m) verResultados(m[1]); else pintarInicio();
+}
+
+/* ================= inicio ================= */
+function pintarInicio() {
+  S.res = null;
+  $("#view").innerHTML = `
+  <div class="home">
+    <section class="card">
+      <div class="card-h"><i data-lucide="search"></i><h2>Nueva búsqueda</h2></div>
+      <form class="card-b stack" id="form" autocomplete="off">
+        <div>
+          <label class="lbl" for="tipos">¿Qué negocios buscas?</label>
+          <textarea class="field" id="tipos" rows="3" placeholder="restaurantes&#10;peluquerías&#10;clínicas dentales" required></textarea>
+          <div class="hint">Un tipo de negocio por línea, tal como lo escribirías en Google Maps.</div>
+        </div>
+        <div>
+          <label class="lbl" for="zonas">¿Dónde?</label>
+          <textarea class="field" id="zonas" rows="2" placeholder="Chapinero, Bogotá&#10;El Poblado, Medellín" required></textarea>
+          <div class="hint">Barrio, ciudad o país. Una zona por línea. Cuanto más concreta, más resultados.</div>
+        </div>
+        <div class="preview" id="preview" hidden>
+          <div class="preview-t"><i data-lucide="list-checks"></i><span id="previewT"></span></div>
+          <ul id="previewL"></ul>
+        </div>
+        <div>
+          <span class="lbl">Cobertura</span>
+          <div class="options" id="cobertura">
+            ${Object.entries(COBERTURA).map(([v, o]) => `
+              <label class="option ${v === "5" ? "sel" : ""}">
+                <input type="radio" name="depth" value="${v}" ${v === "5" ? "checked" : ""}>
+                <div><b>${o.t}</b><span>${o.d}</span></div>
+              </label>`).join("")}
+          </div>
+        </div>
+        <div class="switch-row">
+          <label class="switch"><input type="checkbox" id="email" checked><i></i></label>
+          <div><label class="lbl" for="email" style="margin:0">Buscar emails</label>
+          <div class="hint" style="margin-top:2px">Entra en la web de cada negocio para sacar su email. Tarda más, pero es el dato más valioso.</div></div>
+        </div>
+        <div>
+          <label class="lbl" for="maxt">Tiempo máximo</label>
+          <select class="field" id="maxt">
+            ${[10, 20, 40, 60, 120].map((m) => `<option value="${m}" ${m === 20 ? "selected" : ""}>${m < 60 ? m + " minutos" : m / 60 + (m === 60 ? " hora" : " horas")}</option>`).join("")}
+          </select>
+          <div class="hint">Si se alcanza, la búsqueda se detiene y guarda lo encontrado hasta ese momento.</div>
+        </div>
+        <div>
+          <label class="lbl" for="nombre">Nombre de la búsqueda <span style="font-weight:400;color:var(--text-3)">(opcional)</span></label>
+          <input class="field" id="nombre" placeholder="Se genera solo si lo dejas vacío">
+        </div>
+        <details class="adv">
+          <summary><i data-lucide="chevron-right" class="chev"></i>Opciones avanzadas</summary>
+          <div class="inner stack">
+            <div>
+              <label class="lbl" for="lang">Idioma de los resultados</label>
+              <select class="field" id="lang">
+                <option value="es" selected>Español</option><option value="en">Inglés</option><option value="pt">Portugués</option><option value="fr">Francés</option>
+              </select>
+            </div>
+            <div>
+              <label class="lbl" for="proxies">Proxies</label>
+              <textarea class="field" id="proxies" rows="2" placeholder="http://usuario:clave@servidor:puerto"></textarea>
+              <div class="hint">Solo si Google empieza a bloquear. Uno por línea. Déjalo vacío normalmente.</div>
+            </div>
+          </div>
+        </details>
+        <button class="btn btn-primary btn-block" type="submit" id="go"><i data-lucide="play"></i>Empezar búsqueda</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="card-h"><i data-lucide="history"></i><h2>Mis búsquedas</h2><span class="muted" id="jobsN"></span></div>
+      <div class="card-b"><div class="jobs" id="jobs"><div class="empty"><p>Cargando…</p></div></div></div>
+    </section>
+  </div>`;
+  icons();
+  enlazarFormulario();
+  cargarJobs();
+}
+
+function consultas() {
+  const lineas = (id) => $(id).value.split("\n").map((s) => s.trim()).filter(Boolean);
+  const tipos = lineas("#tipos"), zonas = lineas("#zonas");
+  const out = [];
+  for (const t of tipos) for (const z of zonas) out.push(`${t} en ${z}`);
+  return { tipos, zonas, out };
+}
+
+function enlazarFormulario() {
+  const f = $("#form");
+  const refrescar = () => {
+    const { out } = consultas();
+    $("#preview").hidden = !out.length;
+    $("#previewT").textContent = out.length === 1 ? "Se hará 1 búsqueda en Google Maps:" : `Se harán ${out.length} búsquedas en Google Maps:`;
+    $("#previewL").innerHTML = out.slice(0, 12).map((q) => `<li>${esc(q)}</li>`).join("") + (out.length > 12 ? `<li>y ${out.length - 12} más…</li>` : "");
+  };
+  $("#tipos").oninput = $("#zonas").oninput = refrescar;
+  $("#cobertura").onchange = (e) => {
+    document.querySelectorAll("#cobertura .option").forEach((o) => o.classList.toggle("sel", o.querySelector("input").checked));
+    $("#maxt").value = String(COBERTURA[e.target.value].min);
+  };
+  f.onsubmit = async (e) => {
+    e.preventDefault();
+    const { tipos, zonas, out } = consultas();
+    if (!out.length) return toast("Escribe al menos un tipo de negocio y una zona", true);
+    const depth = +f.querySelector("input[name=depth]:checked").value;
+    const nombre = $("#nombre").value.trim() ||
+      `${tipos.length === 1 ? tipos[0][0].toUpperCase() + tipos[0].slice(1) : tipos.length + " tipos de negocio"} · ${zonas.length === 1 ? zonas[0] : zonas.length + " zonas"}`;
+    const body = {
+      name: nombre, keywords: out, lang: $("#lang").value, zoom: 15, depth,
+      email: $("#email").checked, max_time: +$("#maxt").value * 60,
+      proxies: $("#proxies").value.split("\n").map((s) => s.trim()).filter(Boolean),
+    };
+    $("#go").disabled = true;
+    try {
+      await api("/api/v1/jobs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      toast("Búsqueda iniciada. Puedes seguir trabajando mientras se completa.");
+      $("#tipos").value = $("#zonas").value = $("#nombre").value = "";
+      refrescar();
+      cargarJobs();
+    } catch (err) {
+      toast("No se pudo iniciar: " + err.message, true);
+    } finally {
+      $("#go").disabled = false;
+    }
+  };
+}
+
+async function leadsDe(id) {
+  if (!S.leadsCache[id]) S.leadsCache[id] = await api(`/api/v1/jobs/${id}/leads`);
+  return S.leadsCache[id];
+}
+
+function resumen(leads) {
+  return {
+    total: leads.length,
+    tel: leads.filter((l) => l.phone).length,
+    movil: leads.filter((l) => esMovil(l.phone)).length,
+    email: leads.filter((l) => l.emails && l.emails.length).length,
+    web: leads.filter((l) => l.website).length,
+    sinWeb: leads.filter((l) => !l.website).length,
+  };
+}
+
+async function cargarJobs() {
+  clearTimeout(S.poll);
+  if (S.res || !$("#jobs")) return;
+  try {
+    const jobs = (await api("/api/v1/jobs")) || [];
+    jobs.sort((a, b) => new Date(b.Date) - new Date(a.Date));
+    S.jobs = jobs;
+    for (const j of jobs) if (j.Status === "ok") { try { await leadsDe(j.ID); } catch (e) {} }
+    pintarJobs();
+    if (jobs.some((j) => j.Status === "working" || j.Status === "pending")) S.poll = setTimeout(cargarJobs, 5000);
+    else S.poll = setTimeout(cargarJobs, 30000);
+  } catch (e) {
+    $("#jobs").innerHTML = `<div class="empty"><div class="ico"><i data-lucide="wifi-off"></i></div><h3>No se puede conectar</h3><p>¿Está abierta la ventana del programa? Vuelve a lanzar arrancar.cmd.</p></div>`;
+    icons();
+    S.poll = setTimeout(cargarJobs, 8000);
+  }
+}
+
+function estadoDe(j) {
+  if (j.Status === "ok" && S.leadsCache[j.ID] && !S.leadsCache[j.ID].length) return "empty";
+  return ESTADO[j.Status] ? j.Status : "pending";
+}
+
+function pintarJobs() {
+  const el = $("#jobs");
+  if (!el) return;
+  $("#jobsN").textContent = S.jobs.length ? `· ${S.jobs.length}` : "";
+  if (!S.jobs.length) {
+    el.innerHTML = `<div class="empty"><div class="ico"><i data-lucide="map-pin"></i></div><h3>Aún no hay búsquedas</h3><p>Rellena el formulario de la izquierda: por ejemplo «restaurantes» en «Chapinero, Bogotá».</p></div>`;
+    return icons();
+  }
+  el.innerHTML = S.jobs.map((j) => {
+    const st = estadoDe(j), e = ESTADO[st];
+    const kws = j.Data.keywords || [];
+    const leads = S.leadsCache[j.ID];
+    const maxMin = Math.round((j.Data.max_time || 0) / 6e10);
+    let meta = `<span><i data-lucide="calendar"></i>${esc(fmtDate(j.Date))}</span>`;
+    let barra = "";
+    if (st === "working") {
+      const trans = (Date.now() - new Date(j.Date)) / 60000;
+      meta += `<span><i data-lucide="timer"></i>${Math.max(1, Math.round(trans))} de máx. ${maxMin} min</span>`;
+      barra = `<div class="progress"><i style="width:${Math.min(96, (trans / maxMin) * 100)}%"></i></div>`;
+    }
+    if (leads && leads.length) {
+      const r = resumen(leads);
+      meta += `<span><i data-lucide="store"></i><b>${fmtN(r.total)}</b>&nbsp;negocios</span>
+               <span><i data-lucide="phone"></i>${fmtN(r.tel)} con teléfono</span>
+               <span><i data-lucide="mail"></i>${fmtN(r.email)} con email</span>`;
+    }
+    if (st === "empty") meta += `<span>Google no devolvió negocios. Prueba con una zona más concreta.</span>`;
+    const abre = st === "ok";
+    return `<div class="job">
+      <div>
+        <div class="job-t">${esc(j.Name)}<span class="tag ${e.c}"><i data-lucide="${e.i}" class="${st === "working" ? "spin" : ""}"></i>${e.t}</span></div>
+        <div class="job-k">${esc(kws.slice(0, 3).join(" · "))}${kws.length > 3 ? ` · y ${kws.length - 3} más` : ""}</div>
+        <div class="job-m">${meta}</div>
+      </div>
+      <div class="job-a">
+        ${abre ? `<a class="btn btn-primary btn-sm" href="#/busqueda/${j.ID}"><i data-lucide="table-2"></i>Ver resultados</a>
+                  <button class="btn btn-sm btn-icon" title="Descargar Excel" data-dl="${j.ID}"><i data-lucide="download"></i></button>` : ""}
+        <button class="btn btn-sm btn-icon" title="Repetir búsqueda" data-rep="${j.ID}"><i data-lucide="rotate-ccw"></i></button>
+        <button class="btn btn-sm btn-icon btn-danger" title="Eliminar" data-del="${j.ID}"><i data-lucide="trash-2"></i></button>
+      </div>
+      ${barra}
+    </div>`;
+  }).join("");
+  icons();
+  el.querySelectorAll("[data-del]").forEach((b) => (b.onclick = () => borrar(b.dataset.del)));
+  el.querySelectorAll("[data-rep]").forEach((b) => (b.onclick = () => repetir(b.dataset.rep)));
+  el.querySelectorAll("[data-dl]").forEach((b) => (b.onclick = async () => {
+    const j = S.jobs.find((x) => x.ID === b.dataset.dl);
+    exportar(await leadsDe(j.ID), j.Name);
+  }));
+}
+
+async function borrar(id) {
+  const j = S.jobs.find((x) => x.ID === id) || (S.res && S.res.job);
+  if (!(await confirmar("¿Eliminar esta búsqueda?", `Se borrará «${j ? j.Name : ""}» y sus resultados. No se puede deshacer.`))) return;
+  try {
+    await api(`/api/v1/jobs/${id}`, { method: "DELETE" });
+    delete S.leadsCache[id];
+    toast("Búsqueda eliminada");
+    if (location.hash) location.hash = ""; else cargarJobs();
+  } catch (e) { toast("No se pudo eliminar: " + e.message, true); }
+}
+
+async function repetir(id) {
+  const j = S.jobs.find((x) => x.ID === id) || (S.res && S.res.job);
+  const d = j.Data;
+  try {
+    await api("/api/v1/jobs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+      name: j.Name.replace(/ \(repetida.*\)$/, "") + ` (repetida ${new Intl.DateTimeFormat("es", { day: "numeric", month: "short" }).format(new Date())})`,
+      keywords: d.keywords, lang: d.lang, zoom: d.zoom || 15, depth: d.depth, email: d.email,
+      max_time: Math.round(d.max_time / 1e9), proxies: d.proxies || [],
+    }) });
+    toast("Búsqueda repetida: aparecerá en la lista");
+    if (location.hash) location.hash = ""; else cargarJobs();
+  } catch (e) { toast("No se pudo repetir: " + e.message, true); }
+}
+
+/* ================= exportar a Excel ================= */
+function exportar(leads, nombre) {
+  const cols = [
+    ["Nombre", (l) => l.title], ["Categoría", (l) => l.category], ["Teléfono", (l) => l.phone],
+    ["Móvil (WhatsApp)", (l) => (esMovil(l.phone) ? "Sí" : "No")], ["Email", (l) => (l.emails || []).join(", ")],
+    ["Web", (l) => l.website], ["Dirección", (l) => l.address], ["Barrio", (l) => l.borough], ["Ciudad", (l) => l.city],
+    ["Valoración", (l) => (l.rating ? String(l.rating.toFixed(1)).replace(".", ",") : "")], ["Nº reseñas", (l) => l.reviews || ""],
+    ["Rango de precios", (l) => l.price_range], ["Ficha verificada", (l) => (l.claimed ? "Sí" : "No")], ["Google Maps", (l) => l.link],
+  ];
+  const cel = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const csv = "﻿" + [cols.map((c) => cel(c[0])).join(";"), ...leads.map((l) => cols.map((c) => cel(c[1](l))).join(";"))].join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  a.download = (nombre || "negocios").replace(/[\\/:*?"<>|]/g, "-") + ".csv";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  toast(`${fmtN(leads.length)} negocios descargados (se abre con Excel)`);
+}
+
+/* ================= resultados ================= */
+async function verResultados(id) {
+  clearTimeout(S.poll);
+  $("#view").innerHTML = `<div class="empty"><p>Cargando resultados…</p></div>`;
+  let job, leads;
+  try {
+    job = await api(`/api/v1/jobs/${id}`);
+    leads = await leadsDe(id);
+  } catch (e) {
+    $("#view").innerHTML = `<div class="empty"><div class="ico"><i data-lucide="circle-x"></i></div><h3>No se encontró la búsqueda</h3><p><a href="#">Volver a mis búsquedas</a></p></div>`;
+    return icons();
+  }
+  S.res = { job, leads, tab: "lista", sel: null, map: null,
+    f: { q: "", cat: "", tel: false, movil: false, email: false, web: false, sinweb: false, min: 0, orden: "reviews" } };
+  const r = resumen(leads);
+  const media = leads.filter((l) => l.rating).reduce((a, l, _, arr) => a + l.rating / arr.length, 0);
+  const cats = [...new Set(leads.map((l) => l.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, "es"));
+
+  $("#view").innerHTML = `
+  <div class="res-head">
+    <a class="btn btn-icon" href="#" title="Volver a mis búsquedas"><i data-lucide="arrow-left"></i></a>
+    <div>
+      <h2>${esc(job.Name)}</h2>
+      <div class="sub">${esc((job.Data.keywords || []).join(" · "))} — ${esc(fmtDate(job.Date))}</div>
+    </div>
+    <div class="acts">
+      <button class="btn btn-primary" id="dl"><i data-lucide="download"></i>Descargar Excel</button>
+      <button class="btn" id="rep"><i data-lucide="rotate-ccw"></i>Repetir</button>
+      <button class="btn btn-danger" id="del"><i data-lucide="trash-2"></i>Eliminar</button>
+    </div>
+  </div>
+
+  <div class="kpis">
+    ${[["store", "Negocios", fmtN(r.total), ""], ["phone", "Con teléfono", fmtN(r.tel), pct(r.tel, r.total)],
+       ["message-circle", "Móvil (WhatsApp)", fmtN(r.movil), pct(r.movil, r.total)], ["mail", "Con email", fmtN(r.email), pct(r.email, r.total)],
+       ["globe", "Sin página web", fmtN(r.sinWeb), pct(r.sinWeb, r.total)], ["star", "Valoración media", media ? media.toFixed(1).replace(".", ",") : "—", "sobre 5"]]
+      .map(([i, l, v, p]) => `<div class="kpi"><div class="l"><i data-lucide="${i}"></i>${l}</div><div class="v">${v}</div><div class="p">${p || "&nbsp;"}</div></div>`).join("")}
+  </div>
+
+  <div class="card">
+    <div class="toolbar">
+      <div class="search"><i data-lucide="search"></i><input class="field" id="fq" placeholder="Buscar por nombre, dirección, email…"></div>
+      <select class="field" id="fcat"><option value="">Todas las categorías (${cats.length})</option>${cats.map((c) => `<option>${esc(c)}</option>`).join("")}</select>
+      <select class="field" id="fmin"><option value="0">Cualquier valoración</option><option value="4">4 ★ o más</option><option value="4.5">4,5 ★ o más</option></select>
+      <select class="field" id="ford"><option value="reviews">Más reseñas primero</option><option value="rating">Mejor valorados</option><option value="nombre">Nombre (A-Z)</option></select>
+      <div class="tabs">
+        <button class="tab on" data-tab="lista"><i data-lucide="list"></i>Lista</button>
+        <button class="tab" data-tab="mapa"><i data-lucide="map"></i>Mapa</button>
+      </div>
+    </div>
+    <div class="chips" id="chips">
+      <span class="t">Mostrar solo:</span>
+      <button class="chip" data-k="tel"><i data-lucide="phone"></i>Con teléfono</button>
+      <button class="chip" data-k="movil"><i data-lucide="message-circle"></i>Con móvil / WhatsApp</button>
+      <button class="chip" data-k="email"><i data-lucide="mail"></i>Con email</button>
+      <button class="chip" data-k="web"><i data-lucide="globe"></i>Con web</button>
+      <button class="chip" data-k="sinweb" title="Negocios que aún no tienen página web: candidatos para venderles una"><i data-lucide="lightbulb"></i>Sin web (oportunidad)</button>
+    </div>
+    <div class="count" id="count"></div>
+    <div id="panel"></div>
+  </div>`;
+  icons();
+
+  $("#dl").onclick = () => exportar(filtrar(), job.Name + (filtrar().length < leads.length ? " (filtrado)" : ""));
+  $("#rep").onclick = () => repetir(id);
+  $("#del").onclick = () => borrar(id);
+  $("#fq").oninput = (e) => { S.res.f.q = e.target.value; pintarPanel(); };
+  $("#fcat").onchange = (e) => { S.res.f.cat = e.target.value; pintarPanel(); };
+  $("#fmin").onchange = (e) => { S.res.f.min = +e.target.value; pintarPanel(); };
+  $("#ford").onchange = (e) => { S.res.f.orden = e.target.value; pintarPanel(); };
+  document.querySelectorAll("#chips .chip").forEach((c) => (c.onclick = () => {
+    const k = c.dataset.k;
+    S.res.f[k] = !S.res.f[k];
+    if (k === "web" && S.res.f.web) S.res.f.sinweb = false;
+    if (k === "sinweb" && S.res.f.sinweb) S.res.f.web = false;
+    document.querySelectorAll("#chips .chip").forEach((x) => x.classList.toggle("on", !!S.res.f[x.dataset.k]));
+    pintarPanel();
+  }));
+  document.querySelectorAll(".tab").forEach((t) => (t.onclick = () => {
+    S.res.tab = t.dataset.tab;
+    document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("on", x === t));
+    pintarPanel();
+  }));
+  pintarPanel();
+}
+
+function filtrar() {
+  const { leads, f } = S.res;
+  const q = f.q.trim().toLowerCase();
+  let out = leads.filter((l) => {
+    if (f.cat && l.category !== f.cat) return false;
+    if (f.tel && !l.phone) return false;
+    if (f.movil && !esMovil(l.phone)) return false;
+    if (f.email && !(l.emails && l.emails.length)) return false;
+    if (f.web && !l.website) return false;
+    if (f.sinweb && l.website) return false;
+    if (f.min && l.rating < f.min) return false;
+    if (q && ![l.title, l.address, l.category, l.phone, l.website, (l.emails || []).join(" "), l.borough].join(" ").toLowerCase().includes(q)) return false;
+    return true;
+  });
+  const ord = { reviews: (a, b) => b.reviews - a.reviews, rating: (a, b) => b.rating - a.rating || b.reviews - a.reviews, nombre: (a, b) => a.title.localeCompare(b.title, "es") };
+  return out.sort(ord[f.orden]);
+}
+
+function pintarPanel() {
+  const lista = filtrar();
+  const total = S.res.leads.length;
+  $("#count").textContent = lista.length === total ? `${fmtN(total)} negocios` : `Mostrando ${fmtN(lista.length)} de ${fmtN(total)} negocios`;
+  if (S.res.map) { S.res.map.remove(); S.res.map = null; }
+
+  if (!lista.length) {
+    $("#panel").innerHTML = `<div class="empty"><div class="ico"><i data-lucide="filter-x"></i></div><h3>Ningún negocio cumple los filtros</h3><p>Quita alguno de los filtros de arriba.</p></div>`;
+    return icons();
+  }
+
+  if (S.res.tab === "mapa") {
+    $("#panel").innerHTML = `<div id="map"></div>`;
+    if (!window.L) { $("#panel").innerHTML = `<div class="empty"><p>El mapa necesita conexión a internet.</p></div>`; return; }
+    const map = L.map("map");
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
+    const pts = [];
+    lista.forEach((l) => {
+      if (!l.latitude && !l.longitude) return;
+      const m = L.circleMarker([l.latitude, l.longitude], { radius: 7, color: getComputedStyle(document.documentElement).getPropertyValue("--accent").trim(), weight: 2, fillOpacity: .7 }).addTo(map);
+      m.bindTooltip(esc(l.title));
+      m.on("click", () => abrirDetalle(S.res.leads.indexOf(l)));
+      pts.push([l.latitude, l.longitude]);
+    });
+    if (pts.length) map.fitBounds(pts, { padding: [30, 30], maxZoom: 16 });
+    S.res.map = map;
+    return;
+  }
+
+  $("#panel").innerHTML = `<div class="tbl-wrap"><table>
+    <thead><tr><th>Negocio</th><th>Contacto</th><th>Web</th><th>Valoración</th><th>Zona</th></tr></thead>
+    <tbody>${lista.map((l) => {
+      const i = S.res.leads.indexOf(l);
+      const movil = esMovil(l.phone);
+      return `<tr data-i="${i}" class="${S.res.sel === i ? "sel" : ""}">
+        <td><div class="biz">
+          ${l.thumbnail ? `<img class="thumb" loading="lazy" referrerpolicy="no-referrer" src="${esc(l.thumbnail)}" alt="">` : `<div class="thumb"><i data-lucide="store"></i></div>`}
+          <div><b>${esc(l.title)}</b><div class="c">${esc(l.category || "Sin categoría")}</div>
+          ${l.claimed ? `<span class="ver"><i data-lucide="badge-check"></i>Ficha verificada</span>` : ""}</div>
+        </div></td>
+        <td><div class="contact">
+          ${l.phone ? `<div><i data-lucide="phone"></i><a href="tel:${esc(digitos(l.phone))}" onclick="event.stopPropagation()">${esc(l.phone)}</a>
+            ${movil ? `<a class="wa" href="${waLink(l.phone)}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><i data-lucide="message-circle"></i>WhatsApp</a>` : ""}</div>` : `<div class="none"><i data-lucide="phone-off"></i>Sin teléfono</div>`}
+          ${(l.emails || []).length ? l.emails.map((m) => `<div><i data-lucide="mail"></i><a href="mailto:${esc(m)}" onclick="event.stopPropagation()">${esc(m)}</a></div>`).join("") : `<div class="none"><i data-lucide="mail-x"></i>Sin email</div>`}
+        </div></td>
+        <td>${l.website ? `<a href="${esc(l.website)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(dominio(l.website))}</a>` : `<span class="opp"><i data-lucide="lightbulb"></i>Sin web</span>`}</td>
+        <td>${l.rating ? `<span class="stars"><i data-lucide="star"></i>${l.rating.toFixed(1).replace(".", ",")} <small>(${fmtN(l.reviews)})</small></span>` : `<span class="none">Sin reseñas</span>`}</td>
+        <td>${esc(l.borough || l.city || "")}</td>
+      </tr>`;
+    }).join("")}</tbody></table></div>`;
+  icons();
+  document.querySelectorAll("#panel tbody tr").forEach((tr) => (tr.onclick = () => abrirDetalle(+tr.dataset.i)));
+}
+
+/* ================= detalle ================= */
+const DIAS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
+
+function abrirDetalle(i) {
+  const l = S.res.leads[i];
+  S.res.sel = i;
+  document.querySelectorAll("#panel tbody tr").forEach((tr) => tr.classList.toggle("sel", +tr.dataset.i === i));
+  const hoy = DIAS[(new Date().getDay() + 6) % 7];
+  const horas = l.hours && Object.keys(l.hours).length
+    ? `<table class="hours">${DIAS.map((d) => `<tr class="${d === hoy ? "today" : ""}"><td style="text-transform:capitalize">${d}</td><td>${esc((l.hours[d] || ["Cerrado"]).join(", "))}</td></tr>`).join("")}</table>`
+    : `<p class="none" style="margin:0">Google no muestra horario.</p>`;
+  const enlaces = [...(l.reservations || []).map((x) => ["calendar-check", "Reservar en " + x.source, x.link]),
+                   ...(l.order_online || []).map((x) => ["shopping-bag", "Pedir en " + x.source, x.link]),
+                   ...(l.menu ? [["book-open", "Ver carta", l.menu]] : [])];
+  const fila = (ic, k, v) => `<i data-lucide="${ic}"></i><div><div class="k">${k}</div>${v}</div>`;
+  const movil = esMovil(l.phone);
+
+  $("#drawer").innerHTML = `
+    <div class="drawer-h">
+      <div style="flex:1"><h3>${esc(l.title)}</h3><div class="c">${esc(l.category || "")}${l.price_range ? " · " + esc(l.price_range) : ""}</div></div>
+      <button class="btn btn-icon btn-ghost" id="dClose" title="Cerrar"><i data-lucide="x"></i></button>
+    </div>
+    <div class="drawer-b">
+      ${l.thumbnail ? `<img class="photo" referrerpolicy="no-referrer" src="${esc(l.thumbnail)}" alt="">` : ""}
+      <div class="dl">
+        ${fila("phone", "Teléfono", l.phone ? `<a href="tel:${esc(digitos(l.phone))}">${esc(l.phone)}</a> ${movil ? `<a class="wa" href="${waLink(l.phone)}" target="_blank" rel="noopener"><i data-lucide="message-circle"></i>WhatsApp</a>` : ""}` : `<span class="none">No disponible</span>`)}
+        ${fila("mail", "Email", (l.emails || []).length ? l.emails.map((m) => `<a href="mailto:${esc(m)}">${esc(m)}</a>`).join("<br>") : `<span class="none">No encontrado en su web</span>`)}
+        ${fila("globe", "Página web", l.website ? `<a href="${esc(l.website)}" target="_blank" rel="noopener">${esc(dominio(l.website))}</a>` : `<span class="opp"><i data-lucide="lightbulb"></i>No tiene: oportunidad de venta</span>`)}
+        ${fila("map-pin", "Dirección", esc(l.address || "—") + (l.borough ? `<div class="none">${esc(l.borough)}</div>` : ""))}
+        ${fila("star", "Valoración", l.rating ? `${l.rating.toFixed(1).replace(".", ",")} de 5 · ${fmtN(l.reviews)} reseñas` : `<span class="none">Sin reseñas</span>`)}
+        ${fila("badge-check", "Ficha de Google", l.claimed ? "Verificada por el propietario" : `<span class="none">Sin reclamar por el propietario</span>`)}
+      </div>
+      ${l.description ? `<div class="sec"><h4>Descripción</h4><p style="margin:0">${esc(l.description)}</p></div>` : ""}
+      <div class="sec"><h4>Horario</h4>${horas}</div>
+      ${enlaces.length ? `<div class="sec"><h4>Enlaces</h4><div class="dl">${enlaces.map(([ic, t, u]) => `<i data-lucide="${ic}"></i><div><a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)}</a></div>`).join("")}</div></div>` : ""}
+    </div>
+    <div class="drawer-f">
+      <a class="btn btn-primary" href="${esc(l.link)}" target="_blank" rel="noopener" style="flex:1"><i data-lucide="map"></i>Abrir en Google Maps</a>
+      <button class="btn" id="dCopy"><i data-lucide="copy"></i>Copiar datos</button>
+    </div>`;
+  $("#drawer").classList.add("open");
+  $("#drawerBg").classList.add("open");
+  icons();
+  $("#dClose").onclick = cerrarDetalle;
+  $("#dCopy").onclick = async () => {
+    const txt = [l.title, l.category, l.phone && "Tel: " + l.phone, (l.emails || []).length && "Email: " + l.emails.join(", "),
+                 l.website && "Web: " + l.website, l.address && "Dirección: " + l.address].filter(Boolean).join("\n");
+    try { await navigator.clipboard.writeText(txt); toast("Datos copiados"); } catch (e) { toast("No se pudo copiar", true); }
+  };
+}
+
+function cerrarDetalle() {
+  $("#drawer").classList.remove("open");
+  $("#drawerBg").classList.remove("open");
+}
+$("#drawerBg").onclick = cerrarDetalle;
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if ($("#modal").classList.contains("open")) $("#modalNo").click(); else cerrarDetalle();
+});
+
+enrutar();
+</script>
+</body>
+</html>

@@ -74,7 +74,8 @@ func New(svc *Service, addr string) (*Server, error) {
 
 		ans.viewJob(w, r)
 	})
-	mux.HandleFunc("/", ans.index)
+	mux.HandleFunc("/", ans.app)
+	mux.HandleFunc("/clasico", ans.index)
 
 	// api routes
 	mux.HandleFunc("/api/docs", ans.redocHandler)
@@ -110,6 +111,10 @@ func New(svc *Service, addr string) (*Server, error) {
 
 			renderJSON(w, http.StatusMethodNotAllowed, ans)
 		}
+	})
+
+	mux.HandleFunc("/api/v1/jobs/{id}/leads", func(w http.ResponseWriter, r *http.Request) {
+		ans.apiGetLeads(w, requestWithID(r))
 	})
 
 	mux.HandleFunc("/api/v1/jobs/{id}/download", func(w http.ResponseWriter, r *http.Request) {
@@ -710,7 +715,7 @@ func securityHeaders(next http.Handler) http.Handler {
 				"script-src 'self' cdn.redoc.ly cdnjs.cloudflare.com 'unsafe-inline' 'unsafe-eval'; "+
 				"worker-src 'self' blob:; "+
 				"style-src 'self' 'unsafe-inline' fonts.googleapis.com cdnjs.cloudflare.com; "+
-				"img-src 'self' data: cdn.redoc.ly cdnjs.cloudflare.com *.tile.openstreetmap.org; "+
+				"img-src 'self' data: cdn.redoc.ly cdnjs.cloudflare.com *.tile.openstreetmap.org *.googleusercontent.com; "+
 				"font-src 'self' fonts.gstatic.com; "+
 				"connect-src 'self'")
 
