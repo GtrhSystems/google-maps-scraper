@@ -35,6 +35,13 @@ type Server struct {
 }
 
 func New(svc *Service, addr string) (*Server, error) {
+	// Catálogos de lugares en memoria desde el arranque: la primera búsqueda de zona es inmediata.
+	go func() {
+		for _, p := range paisesLugares {
+			_, _ = cargarLugares(p.CC)
+		}
+	}()
+
 	ans := Server{
 		svc:  svc,
 		tmpl: make(map[string]*template.Template),
@@ -79,6 +86,9 @@ func New(svc *Service, addr string) (*Server, error) {
 
 	// api routes
 	mux.HandleFunc("/api/docs", ans.redocHandler)
+	mux.HandleFunc("/api/v1/lugares", ans.apiLugares)
+	mux.HandleFunc("/api/v1/lugares/paises", ans.apiLugaresPaises)
+	mux.HandleFunc("/api/v1/lugares/verificar", ans.apiLugaresVerificar)
 	mux.HandleFunc("/api/v1/jobs", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost:
@@ -555,6 +565,17 @@ func (s *Server) apiScrape(w http.ResponseWriter, r *http.Request) {
 	newJob.Data.MaxTime *= time.Second
 
 	newJob.normalizeText()
+
+	if len(newJob.Data.Zonas) > 0 {
+		zonas, err := validarZonas(newJob.Data.Zonas)
+		if err != nil {
+			renderJSON(w, http.StatusUnprocessableEntity, apiError{Code: http.StatusUnprocessableEntity, Message: err.Error()})
+
+			return
+		}
+
+		newJob.Data.Zonas = zonas
+	}
 
 	err = newJob.Validate()
 	if err != nil {

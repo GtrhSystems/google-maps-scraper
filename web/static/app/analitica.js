@@ -114,6 +114,7 @@ function camposAnalitica(ms) {
     ["Negocio", "rating", "Valoración en Google", "num", (m) => m.l.rating || null],
     ["Negocio", "resenas", "Nº de reseñas", "num", (m) => m.l.reviews || 0],
     ["Negocio", "verificada", "Ficha de Google verificada", "bool", (m) => !!m.l.claimed],
+    ...(S.res.zonas && S.res.zonas.length ? [["Negocio", "enzona", "Dentro de la zona elegida", "bool", (m) => enZona(m.l)]] : []),
     ["Contacto", "tel", "Tiene teléfono", "bool", (m) => !!m.l.phone],
     ["Contacto", "movil", "Tiene móvil (WhatsApp)", "bool", (m) => esMovil(m.l.phone)],
     ["Contacto", "email", "Tiene email", "bool", (m) => !!(m.l.emails || []).length],

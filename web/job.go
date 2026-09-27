@@ -87,6 +87,7 @@ type JobData struct {
 	ExtraReviews bool          `json:"extra_reviews"`
 	MaxTime      time.Duration `json:"max_time"`
 	Proxies      []string      `json:"proxies"`
+	Zonas        []Lugar       `json:"zonas,omitempty"` // zonas del catálogo oficial elegidas en el buscador
 }
 
 func (d *JobData) Validate() error {
@@ -112,6 +113,12 @@ func (d *JobData) Validate() error {
 
 	if d.FastMode && (d.Lat == "" || d.Lon == "") {
 		return errors.New("missing geo coordinates")
+	}
+
+	for _, k := range d.Keywords {
+		if err := validarGeoConsulta(k); err != nil {
+			return err
+		}
 	}
 
 	return nil

@@ -207,6 +207,23 @@ tbody tr.sel td { background: var(--accent-soft); }
 .plat .logo-marca { width: 12px; height: 12px; margin-right: 4px; vertical-align: -2px; }
 #map { height: 620px; }
 
+/* ---------- selector de zonas (catálogo oficial) ---------- */
+.zona-row { display: flex; gap: 8px; position: relative; }
+.ac { flex: 1; }
+.ac-list { position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 4px); margin: 0; padding: 4px; list-style: none; background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--r); box-shadow: 0 8px 24px rgba(16,24,40,.12); max-height: 340px; overflow-y: auto; }
+.ac-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 7px 9px; border-radius: var(--r-sm); cursor: pointer; font-size: 13px; }
+.ac-list li.on, .ac-list li[data-i]:hover { background: var(--accent-soft); }
+.ac-list li.none { cursor: default; }
+.ac-t { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--accent-strong); background: var(--accent-soft); border-radius: var(--r-sm); padding: 1px 5px; }
+.ac-c { flex-basis: 100%; font-size: 12px; color: var(--text-3); }
+.zonas-sel { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.zonas-sel:empty { display: none; }
+.zona-chip { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 6px 6px 6px 10px; border: 1px solid var(--line-strong); border-radius: var(--r); background: var(--surface-2); font-size: 13px; position: relative; padding-right: 42px; }
+.zona-chip .btn { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); height: 28px; width: 28px; }
+.zv { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: var(--text-3); }
+.zv.ok { color: var(--ok); }
+.zv svg.lucide { width: 12px; height: 12px; }
+
 /* ---------- analítica ---------- */
 .an { padding: 16px; display: grid; gap: 16px; }
 .an-aviso { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 12px; border-radius: var(--r); background: var(--accent-soft); color: var(--text-2); font-size: 13px; }
@@ -453,9 +470,16 @@ function pintarInicio() {
           <div class="hint">Un tipo de negocio por línea, tal como lo escribirías en Google Maps.</div>
         </div>
         <div>
-          <label class="lbl" for="zonas">¿Dónde?</label>
-          <textarea class="field" id="zonas" rows="2" placeholder="Chapinero, Bogotá&#10;El Poblado, Medellín" required></textarea>
-          <div class="hint">Barrio, ciudad o país. Una zona por línea. Cuanto más concreta, más resultados.</div>
+          <label class="lbl" for="zonaQ">¿Dónde?</label>
+          <div class="zona-row">
+            <select class="field" id="pais" title="País" style="width:150px"></select>
+            <div class="ac">
+              <input class="field" id="zonaQ" placeholder="Barrio, municipio, código postal, provincia…" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="zonaL">
+              <ul class="ac-list" id="zonaL" role="listbox" hidden></ul>
+            </div>
+          </div>
+          <div class="zonas-sel" id="zonasSel"></div>
+          <div class="hint" id="zonaHint">Solo se pueden elegir lugares reales del catálogo oficial. Puedes añadir varias zonas.</div>
         </div>
         <div class="preview" id="preview" hidden>
           <div class="preview-t"><i data-lucide="list-checks"></i><span id="previewT"></span></div>
@@ -517,12 +541,104 @@ function pintarInicio() {
   cargarJobs();
 }
 
+// Una consulta por tipo de negocio y zona, centrada en las coordenadas oficiales
+// de la zona («texto #@lat,lon,zoom»); la vista previa enseña solo el texto.
 function consultas() {
-  const lineas = (id) => $(id).value.split("\n").map((s) => s.trim()).filter(Boolean);
-  const tipos = lineas("#tipos"), zonas = lineas("#zonas");
-  const out = [];
-  for (const t of tipos) for (const z of zonas) out.push(`${t} en ${z}`);
-  return { tipos, zonas, out };
+  const tipos = $("#tipos").value.split("\n").map((s) => s.trim()).filter(Boolean);
+  const zonas = S.zonas || [];
+  const out = [], lineas = [];
+  for (const t of tipos) for (const z of zonas) {
+    out.push(`${t} en ${z.consulta}`);
+    lineas.push(`${t} en ${z.consulta} #@${z.lat.toFixed(5)},${z.lon.toFixed(5)},${z.zoom}`);
+  }
+  return { tipos, zonas, out, lineas };
+}
+
+/* ---------- selector de zonas del catálogo oficial ---------- */
+const sinGeo = (k) => String(k).replace(/\s*#@[\d.,-]+$/, "");
+
+async function prepararZonas(refrescar) {
+  S.zonas = S.zonas || [];
+  if (!S.paises) {
+    try { S.paises = await api("/api/v1/lugares/paises"); } catch (e) { S.paises = []; toast("No se pudo cargar el catálogo de lugares: " + e.message, true); }
+  }
+  const sel = $("#pais");
+  sel.innerHTML = S.paises.map((p) => `<option value="${p.cc}">${esc(p.nombre)}</option>`).join("");
+  sel.value = S.pais || (S.paises[0] || {}).cc || "";
+  const fuentes = () => {
+    const p = S.paises.find((x) => x.cc === sel.value);
+    $("#zonaHint").innerHTML = p ? `Solo se pueden elegir lugares reales del catálogo oficial (${fmtN(p.lugares)} lugares). Fuentes: ${Object.values(p.fuentes).map(esc).join(" · ")}.` : "";
+  };
+  fuentes();
+  sel.onchange = () => { S.pais = sel.value; $("#zonaQ").value = ""; cerrarLista(); fuentes(); $("#zonaQ").focus(); };
+
+  const inp = $("#zonaQ"), lista = $("#zonaL");
+  let t = null, pedida = 0, res = [], act = -1;
+  const cerrarLista = () => { lista.hidden = true; inp.setAttribute("aria-expanded", "false"); act = -1; };
+  const marcar = () => lista.querySelectorAll("li[data-i]").forEach((li) => li.classList.toggle("on", +li.dataset.i === act));
+  const pintar = (q) => {
+    lista.hidden = false;
+    inp.setAttribute("aria-expanded", "true");
+    lista.innerHTML = res.length
+      ? res.map((l, i) => `<li role="option" data-i="${i}"><span class="ac-t">${esc(l.etiqueta)}</span><b>${esc(l.nombre)}</b><span class="ac-c">${esc(l.contexto)}</span></li>`).join("")
+      : `<li class="none">Ningún lugar del catálogo oficial coincide con «${esc(q)}». Revisa cómo se escribe o busca el municipio.</li>`;
+    lista.querySelectorAll("li[data-i]").forEach((li) => (li.onmousedown = (e) => { e.preventDefault(); elegir(res[+li.dataset.i]); }));
+  };
+  const elegir = (l) => {
+    if (!l) return;
+    cerrarLista();
+    inp.value = "";
+    if (S.zonas.some((z) => z.pais === l.pais && z.tipo === l.tipo && z.codigo === l.codigo && z.nombre === l.nombre && z.contexto === l.contexto)) return toast("Esa zona ya está añadida");
+    const z = { ...l, verif: l.pais === "ES" && l.tipo === "cp" ? "pendiente" : "" };
+    S.zonas.push(z);
+    pintarZonas(refrescar);
+    if (z.verif) verificarCP(z, refrescar);
+  };
+  inp.oninput = () => {
+    clearTimeout(t);
+    const q = inp.value.trim();
+    if (q.length < 2) return cerrarLista();
+    t = setTimeout(async () => {
+      const n = ++pedida;
+      try {
+        const r = await api(`/api/v1/lugares?pais=${encodeURIComponent(sel.value)}&q=${encodeURIComponent(q)}&limite=12`);
+        if (n !== pedida) return;
+        res = r; act = res.length ? 0 : -1;
+        pintar(q); marcar();
+      } catch (e) { toast("No se pudo buscar el lugar: " + e.message, true); }
+    }, 180);
+  };
+  inp.onkeydown = (e) => {
+    if (lista.hidden) return;
+    if (e.key === "ArrowDown") { e.preventDefault(); act = Math.min(act + 1, res.length - 1); marcar(); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); act = Math.max(act - 1, 0); marcar(); }
+    else if (e.key === "Enter") { e.preventDefault(); elegir(res[act]); }
+    else if (e.key === "Escape") cerrarLista();
+  };
+  inp.onblur = () => setTimeout(cerrarLista, 150);
+  pintarZonas(refrescar);
+}
+
+function pintarZonas(refrescar) {
+  $("#zonasSel").innerHTML = S.zonas.map((z, i) => `<span class="zona-chip" title="${esc(z.fuente)}${z.codigo ? " · código oficial " + esc(z.codigo) : ""}">
+      <span class="ac-t">${esc(z.etiqueta)}</span><b>${esc(z.nombre)}</b><span class="ac-c">${esc(z.contexto)}</span>
+      ${z.verif === "pendiente" ? `<span class="zv"><i data-lucide="loader-circle" class="spin"></i>Verificando…</span>` : z.verif === "ok" ? `<span class="zv ok" title="Código postal verificado en CartoCiudad (Instituto Geográfico Nacional)"><i data-lucide="shield-check"></i>Verificado IGN</span>` : ""}
+      <button type="button" class="btn btn-icon btn-ghost" data-quitar-zona="${i}" title="Quitar zona"><i data-lucide="x"></i></button></span>`).join("");
+  icons();
+  document.querySelectorAll("[data-quitar-zona]").forEach((b) => (b.onclick = () => { S.zonas.splice(+b.dataset.quitarZona, 1); pintarZonas(refrescar); }));
+  refrescar();
+}
+
+// Los códigos postales de España se comprueban en CartoCiudad (IGN), que además da su centroide oficial.
+async function verificarCP(z, refrescar) {
+  try {
+    const v = await api(`/api/v1/lugares/verificar?pais=ES&cp=${encodeURIComponent(z.cp)}`);
+    if (!S.zonas.includes(z)) return;
+    if (v.ok) { z.verif = "ok"; z.lat = v.lat; z.lon = v.lon; }
+    else if (/no responde/.test(v.motivo || "")) { z.verif = ""; toast("CartoCiudad no responde: se usa el código postal del catálogo sin verificación en línea"); }
+    else { S.zonas.splice(S.zonas.indexOf(z), 1); toast(`${z.cp}: ${v.motivo}. Se ha quitado.`, true); }
+  } catch (e) { z.verif = ""; }
+  pintarZonas(refrescar);
 }
 
 function enlazarFormulario() {
@@ -533,29 +649,37 @@ function enlazarFormulario() {
     $("#previewT").textContent = out.length === 1 ? "Se hará 1 búsqueda en Google Maps:" : `Se harán ${out.length} búsquedas en Google Maps:`;
     $("#previewL").innerHTML = out.slice(0, 12).map((q) => `<li>${esc(q)}</li>`).join("") + (out.length > 12 ? `<li>y ${out.length - 12} más…</li>` : "");
   };
-  $("#tipos").oninput = $("#zonas").oninput = refrescar;
+  $("#tipos").oninput = refrescar;
+  prepararZonas(refrescar);
   $("#cobertura").onchange = (e) => {
     document.querySelectorAll("#cobertura .option").forEach((o) => o.classList.toggle("sel", o.querySelector("input").checked));
     $("#maxt").value = String(COBERTURA[e.target.value].min);
   };
   f.onsubmit = async (e) => {
     e.preventDefault();
-    const { tipos, zonas, out } = consultas();
-    if (!out.length) return toast("Escribe al menos un tipo de negocio y una zona", true);
+    const { tipos, zonas, lineas } = consultas();
+    if (!tipos.length) return toast("Escribe al menos un tipo de negocio", true);
+    if (!zonas.length) {
+      $("#zonaQ").focus();
+      return toast($("#zonaQ").value.trim() ? "Elige la zona de la lista: solo se admiten lugares del catálogo oficial" : "Elige al menos una zona de la lista", true);
+    }
+    if (zonas.some((z) => z.verif === "pendiente")) return toast("Espera a que termine la verificación del código postal", true);
     const depth = +f.querySelector("input[name=depth]:checked").value;
     const nombre = $("#nombre").value.trim() ||
-      `${tipos.length === 1 ? tipos[0][0].toUpperCase() + tipos[0].slice(1) : tipos.length + " tipos de negocio"} · ${zonas.length === 1 ? zonas[0] : zonas.length + " zonas"}`;
+      `${tipos.length === 1 ? tipos[0][0].toUpperCase() + tipos[0].slice(1) : tipos.length + " tipos de negocio"} · ${zonas.length === 1 ? zonas[0].nombre : zonas.length + " zonas"}`;
     const body = {
-      name: nombre, keywords: out, lang: $("#lang").value, zoom: 15, depth,
+      name: nombre, keywords: lineas, lang: $("#lang").value, zoom: 15, depth,
       email: $("#email").checked, max_time: +$("#maxt").value * 60,
       proxies: $("#proxies").value.split("\n").map((s) => s.trim()).filter(Boolean),
+      zonas: zonas.map(({ verif, ...z }) => z),
     };
     $("#go").disabled = true;
     try {
       await api("/api/v1/jobs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       toast("Búsqueda iniciada. Puedes seguir trabajando mientras se completa.");
-      $("#tipos").value = $("#zonas").value = $("#nombre").value = "";
-      refrescar();
+      $("#tipos").value = $("#nombre").value = "";
+      S.zonas = [];
+      pintarZonas(refrescar);
       cargarJobs();
     } catch (err) {
       toast("No se pudo iniciar: " + err.message, true);
@@ -614,7 +738,7 @@ function pintarJobs() {
   }
   el.innerHTML = S.jobs.map((j) => {
     const st = estadoDe(j), e = ESTADO[st];
-    const kws = j.Data.keywords || [];
+    const kws = (j.Data.keywords || []).map(sinGeo);
     const leads = S.leadsCache[j.ID];
     const maxMin = Math.round((j.Data.max_time || 0) / 6e10);
     let meta = `<span><i data-lucide="calendar"></i>${esc(fmtDate(j.Date))}</span>`;
@@ -677,7 +801,7 @@ async function repetir(id) {
   try {
     await api("/api/v1/jobs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
       name: j.Name.replace(/ \(repetida.*\)$/, "") + ` (repetida ${new Intl.DateTimeFormat("es", { day: "numeric", month: "short" }).format(new Date())})`,
-      keywords: d.keywords, lang: d.lang, zoom: d.zoom || 15, depth: d.depth, email: d.email,
+      keywords: d.keywords, zonas: d.zonas || [], lang: d.lang, zoom: d.zoom || 15, depth: d.depth, email: d.email,
       max_time: Math.round(d.max_time / 1e9), proxies: d.proxies || [],
     }) });
     toast("Búsqueda repetida: aparecerá en la lista");
@@ -712,6 +836,7 @@ function exportar(leads, nombre, tech = {}, social = {}) {
     ["Tiene agente IA", (l) => (!l.website ? "Sin web" : !tech[l.website] ? "Sin analizar" : ((tech[l.website].chats || []).some((c) => c.kind === "ia") ? "Sí" : "No"))],
     ...Object.entries(REDES).map(([k, [, n]]) => [n, (l) => redesDe(l, tech)[k] || ""]),
     ...["facebook", "instagram", "tiktok", "youtube"].map((k) => ["Seguidores " + REDES[k][1], (l) => { const st = (social[redesDe(l, tech)[k]] || {}); return st.status === "ok" && st.followers ? st.followers : ""; }]), ["Ficha verificada", (l) => (l.claimed ? "Sí" : "No")], ["Google Maps", (l) => l.link],
+    ...(S.res && S.res.zonas && S.res.zonas.length ? [["Dentro de la zona elegida", (l) => (enZona(l) ? "Sí" : "No")]] : []),
     ...columnasAnalitica(tech, social),
   ];
   const cel = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
@@ -737,7 +862,7 @@ async function verResultados(id) {
     return icons();
   }
   S.res = { job, leads, tab: "lista", sel: null, map: null, tech: { status: "idle", results: {} }, social: { status: "idle", results: {} },
-    f: { q: "", cat: "", tel: false, movil: false, email: false, web: false, sinweb: false, meta: false, nometa: false, chat: false, nochat: false, redes: false, min: 0, orden: "reviews" } };
+    f: { q: "", cat: "", tel: false, movil: false, email: false, web: false, sinweb: false, meta: false, nometa: false, chat: false, nochat: false, redes: false, zona: !!(job.Data.zonas || []).length, min: 0, orden: "reviews" }, zonas: job.Data.zonas || [] };
   const r = resumen(leads);
   const media = leads.filter((l) => l.rating).reduce((a, l, _, arr) => a + l.rating / arr.length, 0);
   const cats = [...new Set(leads.map((l) => l.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, "es"));
@@ -747,7 +872,7 @@ async function verResultados(id) {
     <a class="btn btn-icon" href="#" title="Volver a mis búsquedas"><i data-lucide="arrow-left"></i></a>
     <div>
       <h2>${esc(job.Name)}</h2>
-      <div class="sub">${esc((job.Data.keywords || []).join(" · "))} — ${esc(fmtDate(job.Date))}</div>
+      <div class="sub">${esc((job.Data.keywords || []).map(sinGeo).join(" · "))} — ${esc(fmtDate(job.Date))}</div>
     </div>
     <div class="acts">
       <button class="btn btn-primary" id="dl">${marca("excel", "download")}Descargar Excel</button>
@@ -782,6 +907,7 @@ async function verResultados(id) {
       <button class="chip" data-k="chat" title="Tienen chat, chatbot o agente IA en su web"><i data-lucide="bot"></i>Con chat o agente IA</button>
       <button class="chip" data-k="nochat" title="Tienen web pero nadie atiende en ella: candidatos a un agente IA"><i data-lucide="message-square-off"></i>Web sin chat (oportunidad)</button>
       <button class="chip" data-k="redes" title="Tienen al menos una red social enlazada"><i data-lucide="share-2"></i>Con redes sociales</button>
+      ${S.res.zonas.length ? `<button class="chip on" data-k="zona" title="Solo negocios dentro de las zonas elegidas: dentro del límite oficial o del radio de tolerancia, y con el mismo código postal si la zona es un código postal"><i data-lucide="map-pin-check"></i>Solo dentro de la zona elegida</button>` : ""}
     </div>
     <div class="count" id="count"></div>
     <div id="panel"></div>
@@ -817,6 +943,36 @@ async function verResultados(id) {
   cargarSocial(id);
 }
 
+/* ================= zonas elegidas ================= */
+const CIFRAS_CP = { ES: 5, MX: 5, PE: 5, CO: 6, EC: 6, CL: 7, AR: 4 };
+const distKm = (a1, o1, a2, o2) => {
+  const r = Math.PI / 180, x = Math.sin(((a2 - a1) * r) / 2) ** 2 + Math.cos(a1 * r) * Math.cos(a2 * r) * Math.sin(((o2 - o1) * r) / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(x));
+};
+
+// ¿Está el negocio en alguna de las zonas elegidas? Con coordenadas manda la geometría
+// (límite oficial o radio de tolerancia); en zonas de código postal, si la dirección
+// trae un código postal, además tiene que coincidir. Sin coordenadas, el nombre.
+function enZona(l) {
+  const zs = (S.res && S.res.zonas) || [];
+  if (!zs.length) return true;
+  S.res.enZona = S.res.enZona || new WeakMap();
+  if (S.res.enZona.has(l)) return S.res.enZona.get(l);
+  const dir = plano([l.address, l.city, l.borough].filter(Boolean).join(" "));
+  const conCoord = !!(l.latitude || l.longitude);
+  const ok = zs.some((z) => {
+    // Códigos postales de la dirección, con la longitud oficial del país de la zona.
+    const cps = dir.match(new RegExp(`\\b\\d{${CIFRAS_CP[z.pais] || 5}}\\b`, "g")) || [];
+    if (z.tipo === "cp" && cps.length) return cps.includes(z.cp);
+    if (!conCoord) return ` ${dir} `.includes(` ${plano(z.nombre)} `);
+    const m = 0.005;
+    if (z.bbox && l.latitude >= z.bbox[0] - m && l.latitude <= z.bbox[2] + m && l.longitude >= z.bbox[1] - m && l.longitude <= z.bbox[3] + m) return true;
+    return distKm(l.latitude, l.longitude, z.lat, z.lon) <= z.radio_km;
+  });
+  S.res.enZona.set(l, ok);
+  return ok;
+}
+
 /* ================= publicidad de las webs ================= */
 function techDe(l) { return S.res && l.website ? S.res.tech.results[l.website] : null; }
 
@@ -839,7 +995,9 @@ function pintarCount(n, total) {
   let scan = "";
   if (t.status === "running") scan = `<span class="scan"><i data-lucide="loader-circle" class="spin"></i>Analizando publicidad de las webs: ${t.done} de ${t.total}<span class="bar"><i style="width:${t.total ? (t.done / t.total) * 100 : 0}%"></i></span></span>`;
   else if (t.status === "done") scan = `<span class="scan"><i data-lucide="circle-check"></i>Webs analizadas: ${t.total}<button class="btn btn-ghost btn-sm" id="reTech" title="Volver a revisar las webs"><i data-lucide="refresh-cw"></i>Volver a analizar</button></span>${estadoRedes()}`;
-  $("#count").innerHTML = (n === total ? `${fmtN(total)} negocios` : `Mostrando ${fmtN(n)} de ${fmtN(total)} negocios`) + scan;
+  const fuera = S.res.zonas.length ? S.res.leads.filter((l) => !enZona(l)).length : 0;
+  const avisoZona = fuera ? `<span class="opp" title="Google Maps también devuelve negocios cercanos. Estos quedan fuera de las zonas elegidas."><i data-lucide="map-pin-x"></i>${fmtN(fuera)} fuera de la zona elegida${S.res.f.zona ? " (ocultos)" : ""}</span>` : "";
+  $("#count").innerHTML = (n === total ? `${fmtN(total)} negocios` : `Mostrando ${fmtN(n)} de ${fmtN(total)} negocios`) + avisoZona + scan;
   icons();
   const b = $("#reTech");
   if (b) b.onclick = () => cargarTech(S.res.job.ID, false, true);
@@ -1024,6 +1182,7 @@ function filtrar() {
     if (f.chat && !((techDe(l) || {}).chats || []).some((c) => c.kind !== "whatsapp")) return false;
     if (f.nochat) { const t = techDe(l); if (!t || t.status !== "ok" || (t.chats || []).some((c) => c.kind !== "whatsapp")) return false; }
     if (f.redes && !Object.keys(redesDe(l)).length) return false;
+    if (f.zona && !enZona(l)) return false;
     if (q && !plano([l.title, l.address, l.category, l.phone, l.website, (l.emails || []).join(" "), l.borough].join(" ")).includes(q)) return false;
     return true;
   });

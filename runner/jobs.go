@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"plugin"
+	"regexp"
 	"strconv"
 	"strings"
 	"uuid"
@@ -148,7 +149,12 @@ func CreateSeedJobs(
 				opts = append(opts, gmaps.WithGmapCompletionTracker(createCfg.completionTracker))
 			}
 
-			job = gmaps.NewGmapJob(id, langCode, query, maxDepth, email, geoCoordinates, zoom, opts...)
+			geo, z := geoCoordinates, zoom
+			if q.geo != "" {
+				geo, z = q.geo, q.zoom
+			}
+
+			job = gmaps.NewGmapJob(id, langCode, query, maxDepth, email, geo, z, opts...)
 		} else {
 			jparams := gmaps.MapSearchParams{
 				Location: gmaps.MapLocation{
@@ -305,7 +311,13 @@ func deterministicSeedID(parts ...string) string {
 type query struct {
 	text string
 	id   string
+	geo  string // "lat,lon" propio de esta consulta (sintaxis «texto #@lat,lon,zoom»)
+	zoom int
 }
+
+// reQueryGeo reconoce el sufijo «#@lat,lon,zoom» que centra una consulta en un
+// punto concreto (p. ej. el centroide oficial de un código postal o municipio).
+var reQueryGeo = regexp.MustCompile(`\s*#@\s*(-?\d{1,3}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)\s*,\s*(\d{1,2})\s*$`)
 
 // readQueries reads all non-empty lines from r and parses optional custom IDs
 // using the "#!#" delimiter (same format as CreateSeedJobs).
@@ -343,6 +355,20 @@ func parseQueryLine(line string) (query, bool, error) {
 		q.id = strings.TrimSpace(after)
 	} else {
 		q.text = line
+	}
+
+	if m := reQueryGeo.FindStringSubmatch(q.text); m != nil {
+		lat, _ := strconv.ParseFloat(m[1], 64)
+		lon, _ := strconv.ParseFloat(m[2], 64)
+		zoom, _ := strconv.Atoi(m[3])
+
+		if lat < -90 || lat > 90 || lon < -180 || lon > 180 || zoom < 1 || zoom > 21 {
+			return query{}, false, fmt.Errorf("invalid query line %q: coordinates or zoom out of range", line)
+		}
+
+		q.text = strings.TrimSpace(q.text[:len(q.text)-len(m[0])])
+		q.geo = m[1] + "," + m[2]
+		q.zoom = zoom
 	}
 
 	if q.text == "" {
