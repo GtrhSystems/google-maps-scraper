@@ -10,6 +10,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="/static/app/lucide.min.js"></script>
 <script src="/static/app/brands.js"></script>
+<script src="/static/app/analitica.js"></script>
 <style>
 :root {
   --bg: #f5f7f9; --surface: #ffffff; --surface-2: #f0f3f6; --line: #e1e6eb; --line-strong: #cdd5dd;
@@ -205,6 +206,54 @@ tbody tr.sel td { background: var(--accent-soft); }
 [data-theme="dark"] img.logo-marca { background: #fff; padding: 1px; box-sizing: border-box; }
 .plat .logo-marca { width: 12px; height: 12px; margin-right: 4px; vertical-align: -2px; }
 #map { height: 620px; }
+
+/* ---------- analítica ---------- */
+.an { padding: 16px; display: grid; gap: 16px; }
+.an-aviso { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 12px; border-radius: var(--r); background: var(--accent-soft); color: var(--text-2); font-size: 13px; }
+.an-filtros { border: 1px solid var(--line); border-radius: var(--r); padding: 12px; display: grid; gap: 8px; }
+.an-fh { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.an-fh b { margin-right: 4px; }
+.cond { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cond select.field, .an-fh select.field { height: 34px; max-width: 320px; }
+.an-kpis { margin: 0; }
+.an-grafs { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
+.an-graf { border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; }
+.an-graf h4 { margin: 0; font-size: 14px; }
+.an-sub { font-size: 12px; color: var(--text-3); margin: 2px 0 10px; }
+.bar-row { display: grid; grid-template-columns: minmax(120px, 42%) 1fr 64px; align-items: center; gap: 10px; padding: 3px 0; cursor: default; }
+.bar-row:hover .bar-t { background: var(--line); }
+.bar-l { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); min-width: 0; }
+.bar-l span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar-t { height: 14px; background: var(--surface-2); border-radius: 0 4px 4px 0; }
+.bar-t i { display: block; height: 100%; min-width: 2px; background: var(--accent); border-radius: 0 4px 4px 0; }
+.bar-t i.st-activo { background: var(--ok); } .bar-t i.st-poco { background: var(--warn); } .bar-t i.st-inactivo { background: var(--err); } .bar-t i.st-sin { background: var(--line-strong); }
+.bar-v { font-size: 12px; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.bar-v small { display: block; font-weight: 400; color: var(--text-3); }
+.st-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: 1px; flex: none; }
+.st-dot.st-activo { background: var(--ok); } .st-dot.st-poco { background: var(--warn); } .st-dot.st-inactivo { background: var(--err); } .st-dot.st-sin { background: var(--line-strong); }
+.an-tip { position: fixed; z-index: 60; display: none; pointer-events: none; background: var(--text); color: var(--surface); font-size: 12px; padding: 6px 8px; border-radius: var(--r-sm); max-width: 320px; box-shadow: var(--shadow); }
+.an-tabla-h { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; font-size: 13px; }
+.an-tabla th { cursor: pointer; user-select: none; white-space: nowrap; }
+.an-tabla th.on { color: var(--accent-strong); }
+.an-tabla td .c { font-size: 12px; color: var(--text-3); }
+.an-ics { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 3px; }
+.an-tabla tbody tr { cursor: pointer; }
+.meter { display: inline-block; width: 60px; height: 6px; border-radius: 3px; background: var(--surface-2); vertical-align: 1px; overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+.pres { display: flex; align-items: center; gap: 16px; margin-bottom: 10px; }
+.pres-v { font-size: 34px; font-weight: 700; line-height: 1; }
+.pres-v small { font-size: 14px; color: var(--text-3); font-weight: 500; }
+.pres-pos { display: flex; flex-wrap: wrap; gap: 6px; }
+.pos { font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: var(--r-sm); background: var(--accent-soft); color: var(--accent-strong); }
+.pres-f { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); font-size: 13px; }
+.pres-b { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tagrow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 13px; padding: 2px 0; }
+.tagrow code { font-size: 11px; background: var(--surface-2); padding: 1px 5px; border-radius: var(--r-sm); color: var(--text-2); word-break: break-all; }
+.soc-m { margin-top: 8px; border-top: 1px solid var(--line); padding-top: 6px; display: grid; gap: 3px; font-size: 12px; }
+.soc-m > div { display: flex; justify-content: space-between; gap: 10px; }
+.soc-m > div > span:first-child { color: var(--text-3); }
+.soc-m > div > span:last-child { text-align: right; }
+.soc-m p { margin: 4px 0 0; font-size: 11px; }
 
 /* ---------- panel de detalle ---------- */
 .drawer-bg { position: fixed; inset: 0; background: rgba(10,15,20,.35); z-index: 40; display: none; }
@@ -663,6 +712,7 @@ function exportar(leads, nombre, tech = {}, social = {}) {
     ["Tiene agente IA", (l) => (!l.website ? "Sin web" : !tech[l.website] ? "Sin analizar" : ((tech[l.website].chats || []).some((c) => c.kind === "ia") ? "Sí" : "No"))],
     ...Object.entries(REDES).map(([k, [, n]]) => [n, (l) => redesDe(l, tech)[k] || ""]),
     ...["facebook", "instagram", "tiktok", "youtube"].map((k) => ["Seguidores " + REDES[k][1], (l) => { const st = (social[redesDe(l, tech)[k]] || {}); return st.status === "ok" && st.followers ? st.followers : ""; }]), ["Ficha verificada", (l) => (l.claimed ? "Sí" : "No")], ["Google Maps", (l) => l.link],
+    ...columnasAnalitica(tech, social),
   ];
   const cel = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const csv = "﻿" + [cols.map((c) => cel(c[0])).join(";"), ...leads.map((l) => cols.map((c) => cel(c[1](l))).join(";"))].join("\r\n");
@@ -717,6 +767,7 @@ async function verResultados(id) {
       <div class="tabs">
         <button class="tab on" data-tab="lista"><i data-lucide="list"></i>Lista</button>
         <button class="tab" data-tab="mapa"><i data-lucide="map"></i>Mapa</button>
+        <button class="tab" data-tab="analitica"><i data-lucide="chart-no-axes-combined"></i>Analítica</button>
       </div>
     </div>
     <div class="chips" id="chips">
@@ -777,7 +828,7 @@ async function cargarTech(id, arrancar = false, forzar = false) {
     if ((arrancar && t.status === "idle" && conWeb) || forzar) t = await api(`/api/v1/jobs/${id}/tech`, { method: "POST" });
     if (!S.res || S.res.job.ID !== id) return;
     S.res.tech = t;
-    if (S.res.tab === "lista") pintarPanel(); else { pintarCount(filtrar().length, S.res.leads.length); pintarKpis(); }
+    refrescarPanel();
     if (S.res.sel != null && $("#drawer").classList.contains("open")) abrirDetalle(S.res.sel);
     if (t.status === "running") setTimeout(() => cargarTech(id), 2000);
   } catch (e) { toast("No se pudieron analizar las webs: " + e.message, true); }
@@ -909,7 +960,7 @@ async function cargarSocial(id, arrancar = false, reintentar = false) {
     if (arrancar) sc = await api(`/api/v1/jobs/${id}/social${reintentar ? "?reintentar=1" : ""}`, { method: "POST" });
     if (!S.res || S.res.job.ID !== id) return;
     S.res.social = sc;
-    if (S.res.tab === "lista") pintarPanel(); else pintarCount(filtrar().length, S.res.leads.length);
+    refrescarPanel();
     if (S.res.sel != null && $("#drawer").classList.contains("open")) abrirDetalle(S.res.sel);
     if (sc.status === "running") setTimeout(() => cargarSocial(id), 2500);
   } catch (e) { toast("No se pudieron consultar las redes: " + e.message, true); }
@@ -950,7 +1001,7 @@ function seccionRedes(l) {
     else if (["facebook", "instagram", "tiktok", "youtube"].includes(k)) datos = sc.status === "running" ? `<p>Consultando…</p>` : "";
     else if (k !== "whatsapp") datos = `<p>${REDES[k][1]} exige iniciar sesión: solo el enlace.</p>`;
     return `<div class="soc"><div class="soc-h"><b>${marca(k)}${REDES[k][1]}${st && st.verified ? ' <i data-lucide="badge-check" style="width:13px;height:13px;color:var(--accent)"></i>' : ""}</b>
-      <a href="${esc(u)}" target="_blank" rel="noopener">${esc(nombre)}</a></div>${datos}</div>`;
+      <a href="${esc(u)}" target="_blank" rel="noopener">${esc(nombre)}</a></div>${datos}${metricasRed(k, st)}</div>`;
   }).join("");
   const boton = sc.status === "idle" && ks.some((k) => ["facebook", "instagram", "tiktok", "youtube"].includes(k))
     ? `<button class="btn btn-sm" style="margin-top:10px" onclick="cargarSocial(S.res.job.ID, true)"><i data-lucide="users"></i>Consultar datos de las redes de esta búsqueda</button>` : "";
@@ -980,12 +1031,20 @@ function filtrar() {
   return out.sort(ord[f.orden]);
 }
 
+// Repinta tras llegar datos nuevos, sin mover el mapa ni borrar un filtro a medio escribir.
+function refrescarPanel() {
+  const editando = document.activeElement && document.activeElement.closest(".an-filtros");
+  if (S.res.tab === "lista" || (S.res.tab === "analitica" && !editando)) pintarPanel();
+  else { pintarCount(filtrar().length, S.res.leads.length); pintarKpis(); }
+}
+
 function pintarPanel() {
   const lista = filtrar();
   const total = S.res.leads.length;
   pintarCount(lista.length, total);
   pintarKpis();
   if (S.res.map) { S.res.map.remove(); S.res.map = null; }
+  if (S.res.tab === "analitica") return pintarAnalitica();
 
   if (!lista.length) {
     $("#panel").innerHTML = `<div class="empty"><div class="ico"><i data-lucide="filter-x"></i></div><h3>Ningún negocio cumple los filtros</h3><p>Quita alguno de los filtros de arriba.</p></div>`;
@@ -1069,9 +1128,11 @@ function abrirDetalle(i) {
         ${fila("badge-check", "Ficha de Google", l.claimed ? "Verificada por el propietario" : `<span class="none">Sin reclamar por el propietario</span>`)}
       </div>
       ${l.description ? `<div class="sec"><h4>Descripción</h4><p style="margin:0">${esc(l.description)}</p></div>` : ""}
+      ${seccionPresencia(l)}
       ${seccionChat(l)}
       ${seccionRedes(l)}
       ${seccionPublicidad(l)}
+      ${seccionWeb(l)}
       <div class="sec"><h4>Horario</h4>${horas}</div>
       ${enlaces.length ? `<div class="sec"><h4>Enlaces</h4><div class="dl">${enlaces.map(([ic, t, u, src]) => `${marca(src, ic)}<div><a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)}</a></div>`).join("")}</div></div>` : ""}
     </div>

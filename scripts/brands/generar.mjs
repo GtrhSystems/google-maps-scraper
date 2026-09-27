@@ -24,6 +24,14 @@ const MARCAS = {
   zoho: ["Zoho", "si", "zoho"], biolink: ["Bio.link", "si", "biolink"], calendly: ["Calendly", "si", "calendly"],
   glovo: ["Glovo", "si", "glovo"], justeat: ["Just Eat", "si", "justeat"], linktree: ["Linktree", "si", "linktree"],
   tripadvisor: ["Tripadvisor", "si", "tripadvisor"], ubereats: ["Uber Eats", "si", "ubereats"], ifood: ["iFood", "si", "ifood"],
+  // Etiquetas, píxeles y scripts que detecta el análisis de las webs.
+  hotjar: ["Hotjar", "si", "hotjar"], woocommerce: ["WooCommerce", "si", "woocommerce"], stripe: ["Stripe", "si", "stripe"],
+  paypal: ["PayPal", "si", "paypal"], mailchimp: ["Mailchimp", "si", "mailchimp"], matomo: ["Matomo", "si", "matomo"],
+  mixpanel: ["Mixpanel", "si", "mixpanel"], snapchat: ["Snapchat", "si", "snapchat"], pinterest: ["Pinterest", "si", "pinterest"],
+  googleadsense: ["Google AdSense", "si", "googleadsense"], googlecampaignmanager360: ["Campaign Manager 360", "si", "googlecampaignmanager360"],
+  plausibleanalytics: ["Plausible", "si", "plausibleanalytics"], brevo: ["Brevo", "si", "brevo"],
+  salesforce: ["Salesforce", "fa", "faSalesforce", "#00A1E0"], microsoft: ["Microsoft", "fa", "faMicrosoft", "#737373"],
+  yandex: ["Yandex", "fa", "faYandex", "#FC3F1D"],
 };
 
 // Nombres tal y como llegan del servidor (plataformas, chats, redes, reservas) → clave.
@@ -36,6 +44,11 @@ const ALIAS = {
   "analytics": "googleanalytics", "google tag manager": "googletagmanager", "google maps": "googlemaps", "bio.link": "biolink",
   "just eat": "justeat", "uber eats": "ubereats", "didi food": "didifood", "el tenedor": "eltenedor", "mesa 24/7": "mesa247",
   "píxel de meta": "meta",
+  "google analytics 4": "googleanalytics", "universal analytics": "googleanalytics", "píxel de tiktok": "tiktok",
+  "linkedin insight": "linkedin", "pinterest tag": "pinterest", "píxel de snapchat": "snapchat", "píxel de x (twitter)": "x",
+  "microsoft ads (uet)": "microsoft", "microsoft clarity": "clarity", "floodlight (campaign manager)": "googlecampaignmanager360",
+  "google adsense": "googleadsense", "yandex metrica": "yandex", "plausible": "plausibleanalytics", "brevo (sendinblue)": "brevo",
+  "cookieyes (cookie law info)": "cookieyes", "cookie notice": "cookienotice", "borlabs cookie": "borlabscookie",
 };
 
 const esc = (s) => s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
@@ -52,7 +65,7 @@ const siHex = (slug, titulo) => {
 };
 
 const lineas = [];
-for (const [k, [t, fuente, id]] of Object.entries(MARCAS)) {
+for (const [k, [t, fuente, id, color]] of Object.entries(MARCAS)) {
   if (fuente === "si") {
     const svg = readFileSync(join(siDir, "icons", id + ".svg"), "utf8");
     const d = svg.match(/<path d="([^"]+)"/)[1];
@@ -62,7 +75,7 @@ for (const [k, [t, fuente, id]] of Object.entries(MARCAS)) {
     const fa = readFileSync(join(faDir, id + ".js"), "utf8");
     const w = fa.match(/var width = (\d+)/)[1], h = fa.match(/var height = (\d+)/)[1];
     const d = fa.match(/var svgPathData = '([^']+)'/)[1];
-    lineas.push(`  ${JSON.stringify(k)}: { t: "${esc(t)}", vb: "0 0 ${w} ${h}", c: "#0A66C2", d: "${d}" },`);
+    lineas.push(`  ${JSON.stringify(k)}: { t: "${esc(t)}", vb: "0 0 ${w} ${h}", c: "${color || "#0A66C2"}", d: "${d}" },`);
   }
 }
 for (const f of readdirSync(join(raiz, "web", "static", "app", "brands")).sort()) {

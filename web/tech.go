@@ -35,6 +35,8 @@ type Tech struct {
 	Social      string            `json:"social,omitempty"` // the "website" is really a social profile
 	Socials     map[string]string `json:"socials,omitempty"`
 	Chats       []ChatTool        `json:"chats,omitempty"`
+	Tags        []Tag             `json:"tags,omitempty"`
+	Web         *WebAudit         `json:"web,omitempty"`
 }
 
 // TechScan is the per-job analysis state, persisted as {id}.tech.json.
@@ -187,7 +189,10 @@ func analyzeSite(ctx context.Context, raw string) *Tech {
 
 	c := techClient()
 
+	t0 := time.Now()
 	body, final, err := fetchBody(ctx, c, raw)
+	elapsed := time.Since(t0)
+
 	if err != nil && body == "" {
 		msg := "No responde"
 		if strings.Contains(err.Error(), "certificate") || strings.Contains(err.Error(), "tls") {
@@ -229,6 +234,7 @@ func analyzeSite(ctx context.Context, raw string) *Tech {
 
 	gtms := uniq(reGTM.FindAllString(body, -1))
 	t.TagManager = len(gtms) > 0
+	gtmCode := "" // código de los contenedores de Tag Manager, para detectar etiquetas
 
 	for i, id := range gtms {
 		if i >= 3 {
@@ -254,9 +260,15 @@ func analyzeSite(ctx context.Context, raw string) *Tech {
 		t.TikTok = t.TikTok || reTikTok.MatchString(js)
 		t.LinkedIn = t.LinkedIn || reLinkedIn.MatchString(js)
 		chatText += strings.ToLower(js)
+		gtmCode += "\n" + js
 	}
 
 	t.Chats = detectChats(chatText)
+	t.Tags = detectTags(body, gtmCode, t.MetaIDs)
+	if t.MetaPixel && (len(t.Tags) == 0 || t.Tags[0].Name != "Píxel de Meta") {
+		t.Tags = append([]Tag{{Name: "Píxel de Meta", Cat: "publicidad", IDs: t.MetaIDs}}, t.Tags...)
+	}
+	t.Web = auditPage(body, final, elapsed, time.Now())
 
 	t.GoogleAds = len(t.GoogleAdsID) > 0
 

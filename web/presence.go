@@ -210,6 +210,21 @@ type SocialStats struct {
 	Category  string `json:"category,omitempty"`
 	Bio       string `json:"bio,omitempty"`
 	LastPost  string `json:"last_post,omitempty"`
+
+	// Actividad e interacción de las últimas publicaciones visibles.
+	Sample      int     `json:"sample,omitempty"`       // publicaciones analizadas
+	Recent30    int     `json:"recent_30,omitempty"`    // de ellas, en los últimos 30 días
+	Recent90    int     `json:"recent_90,omitempty"`    // y en los últimos 90
+	PostsMonth  float64 `json:"posts_month,omitempty"`  // ritmo de publicación estimado
+	AvgLikes    float64 `json:"avg_likes,omitempty"`    // «me gusta» medios por publicación
+	AvgComments float64 `json:"avg_comments,omitempty"` // comentarios medios
+	AvgViews    float64 `json:"avg_views,omitempty"`    // reproducciones medias (vídeo)
+	Engagement  float64 `json:"engagement,omitempty"`   // (me gusta + comentarios) medios / seguidores, en %
+
+	// Contacto público de las cuentas de empresa.
+	Email   string `json:"email,omitempty"`
+	Phone   string `json:"phone,omitempty"`
+	Website string `json:"website,omitempty"`
 }
 
 // SocialScan is the per-job profile lookup, persisted as {id}.social.json.
@@ -399,6 +414,8 @@ func fetchTikTok(ctx context.Context, u string) *SocialStats {
 		st.Verified = m[1] == "true"
 	}
 
+	applySamples(st, parseTikTokItems(body), time.Now())
+
 	return st
 }
 
@@ -421,8 +438,9 @@ func fetchYouTube(ctx context.Context, u string) *SocialStats {
 		return st
 	}
 
-	st.Followers = firstCount(reYTSubs, body)
-	st.Posts = firstCount(reYTVideos, body)
+	head := ytHeader(body)
+	st.Followers = firstCount(reYTSubs, head)
+	st.Posts = firstCount(reYTVideos, head)
 
 	for _, m := range reOG.FindAllStringSubmatch(body, -1) {
 		if m[1] == "title" {
@@ -440,7 +458,36 @@ func fetchYouTube(ctx context.Context, u string) *SocialStats {
 
 	st.Status = "ok"
 
+	applySamples(st, youTubeRecent(ctx, body), time.Now())
+
 	return st
+}
+
+// ytHeader devuelve el bloque de la cabecera del canal («5,67 mil suscriptores •
+// 440 vídeos»). La página también lista canales recomendados con sus propios
+// suscriptores (subscriberCountText), que no deben confundirse con los del canal.
+func ytHeader(body string) string {
+	rest := body
+
+	for {
+		i := strings.Index(rest, `"metadataParts":[`)
+		if i < 0 {
+			return ""
+		}
+
+		rest = rest[i:]
+
+		end := strings.Index(rest, `"delimiter"`)
+		if end < 0 || end > 3000 {
+			end = min(len(rest), 3000)
+		}
+
+		if reYTSubs.MatchString(rest[:end]) {
+			return rest[:end]
+		}
+
+		rest = rest[len(`"metadataParts":[`):]
+	}
 }
 
 // instagramLimited is set once Instagram rate-limits this IP, so the rest of a
@@ -466,25 +513,42 @@ func fetchInstagram(ctx context.Context, u string, limited *bool) *SocialStats {
 		return st
 	}
 
+	if !parseInstagramProfile(body, st, time.Now()) {
+		st.Status, st.Message = "error", "El perfil no existe o es privado"
+	}
+
+	return st
+}
+
+type igCount struct {
+	Count int64 `json:"count"`
+}
+
+// parseInstagramProfile lee la respuesta de web_profile_info: datos del perfil,
+// contacto de empresa y las últimas publicaciones con sus interacciones.
+func parseInstagramProfile(body string, st *SocialStats, now time.Time) bool {
 	var r struct {
 		Data struct {
 			User *struct {
-				FullName   string `json:"full_name"`
-				Biography  string `json:"biography"`
-				IsVerified bool   `json:"is_verified"`
-				IsBusiness bool   `json:"is_business_account"`
-				Category   string `json:"category_name"`
-				FollowedBy struct {
-					Count int64 `json:"count"`
-				} `json:"edge_followed_by"`
-				Follow struct {
-					Count int64 `json:"count"`
-				} `json:"edge_follow"`
-				Media struct {
+				FullName    string  `json:"full_name"`
+				Biography   string  `json:"biography"`
+				IsVerified  bool    `json:"is_verified"`
+				IsBusiness  bool    `json:"is_business_account"`
+				Category    string  `json:"category_name"`
+				Email       string  `json:"business_email"`
+				Phone       string  `json:"business_phone_number"`
+				ExternalURL string  `json:"external_url"`
+				FollowedBy  igCount `json:"edge_followed_by"`
+				Follow      igCount `json:"edge_follow"`
+				Media       struct {
 					Count int64 `json:"count"`
 					Edges []struct {
 						Node struct {
-							TakenAt int64 `json:"taken_at_timestamp"`
+							TakenAt  int64   `json:"taken_at_timestamp"`
+							Liked    igCount `json:"edge_liked_by"`
+							Preview  igCount `json:"edge_media_preview_like"`
+							Comments igCount `json:"edge_media_to_comment"`
+							Views    int64   `json:"video_view_count"`
 						} `json:"node"`
 					} `json:"edges"`
 				} `json:"edge_owner_to_timeline_media"`
@@ -493,28 +557,34 @@ func fetchInstagram(ctx context.Context, u string, limited *bool) *SocialStats {
 	}
 
 	if json.Unmarshal([]byte(body), &r) != nil || r.Data.User == nil {
-		st.Status, st.Message = "error", "El perfil no existe o es privado"
-
-		return st
+		return false
 	}
 
 	p := r.Data.User
 	st.Status = "ok"
 	st.Name, st.Bio, st.Verified, st.Business, st.Category = p.FullName, p.Biography, p.IsVerified, p.IsBusiness, p.Category
 	st.Followers, st.Following, st.Posts = p.FollowedBy.Count, p.Follow.Count, p.Media.Count
+	st.Email, st.Phone, st.Website = p.Email, p.Phone, p.ExternalURL
 
-	var last int64
+	var posts []postSample
+
 	for _, e := range p.Media.Edges {
-		if e.Node.TakenAt > last {
-			last = e.Node.TakenAt
+		n := e.Node
+		if n.TakenAt == 0 {
+			continue
 		}
+
+		likes := n.Liked.Count
+		if likes == 0 {
+			likes = n.Preview.Count
+		}
+
+		posts = append(posts, postSample{At: time.Unix(n.TakenAt, 0), Likes: likes, Comments: n.Comments.Count, Views: n.Views})
 	}
 
-	if last > 0 {
-		st.LastPost = time.Unix(last, 0).UTC().Format("2006-01-02")
-	}
+	applySamples(st, posts, now)
 
-	return st
+	return true
 }
 
 func (s *Service) socialPath(id string) (string, error) {
