@@ -89,10 +89,10 @@ function marca(nombre, generico = "") {
   const k = claveMarca(nombre);
   if (!k) return generico ? \`<i data-lucide="\${generico}"></i>\` : "";
   const m = MARCAS[k];
-  if (m.img) return \`<img class="brand" src="\${m.img}" alt="" title="\${esc(nombreMarca(nombre))}" loading="lazy">\`;
+  if (m.img) return \`<img class="logo-marca" src="\${m.img}" alt="" title="\${esc(nombreMarca(nombre))}" loading="lazy">\`;
   const fill = k === "instagram" ? "url(#brand-ig)" : m.c;
   const defs = k === "instagram" ? '<defs><radialGradient id="brand-ig" cx="30%" cy="107%" r="150%"><stop offset="0" stop-color="#fdf497"/><stop offset=".05" stop-color="#fdf497"/><stop offset=".45" stop-color="#fd5949"/><stop offset=".6" stop-color="#d6249f"/><stop offset=".9" stop-color="#285AEB"/></radialGradient></defs>' : "";
-  return \`<svg class="brand" viewBox="\${m.vb}" role="img" aria-label="\${m.t}"><title>\${m.t}</title>\${defs}<path fill="\${fill}" d="\${m.d}"/></svg>\`;
+  return \`<svg class="logo-marca" viewBox="\${m.vb}" role="img" aria-label="\${m.t}"><title>\${m.t}</title>\${defs}<path fill="\${fill}" d="\${m.d}"/></svg>\`;
 }
 
 function nombreMarca(nombre) { const k = claveMarca(nombre); return k && MARCAS[k].t ? MARCAS[k].t : String(nombre || ""); }

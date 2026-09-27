@@ -195,12 +195,15 @@ tbody tr.sel td { background: var(--accent-soft); }
 .scan .bar { width: 120px; height: 4px; background: var(--surface-2); border-radius: 2px; overflow: hidden; }
 .scan .bar i { display: block; height: 100%; background: var(--accent); border-radius: 2px; transition: width .4s; }
 .opp { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: var(--r-sm); background: var(--warn-soft); color: var(--warn); }
-.brand { width: 14px; height: 14px; flex: none; display: inline-block; vertical-align: -2px; object-fit: contain; border-radius: 3px; }
-.net .brand, .ad .brand, .wa .brand { width: 13px; height: 13px; }
-.btn-primary .brand { width: 18px; height: 18px; padding: 2px; background: #fff; border-radius: 4px; box-sizing: border-box; }
-.dl > .brand { width: 16px; height: 16px; margin-top: 2px; }
-.soc-h b .brand { width: 16px; height: 16px; margin-right: 6px; vertical-align: -3px; }
-.plat .brand { width: 12px; height: 12px; margin-right: 4px; vertical-align: -2px; }
+.logo-marca { width: 14px; height: 14px; flex: none; display: inline-block; vertical-align: -2px; object-fit: contain; border-radius: 3px; }
+.net .logo-marca, .ad .logo-marca, .wa .logo-marca { width: 13px; height: 13px; }
+.btn-primary .logo-marca { width: 18px; height: 18px; padding: 2px; background: #fff; border-radius: 4px; box-sizing: border-box; }
+.dl > .logo-marca { width: 16px; height: 16px; margin-top: 2px; }
+.soc-h b { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.soc-h a { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.soc-h b .logo-marca { width: 16px; height: 16px; }
+[data-theme="dark"] img.logo-marca { background: #fff; padding: 1px; box-sizing: border-box; }
+.plat .logo-marca { width: 12px; height: 12px; margin-right: 4px; vertical-align: -2px; }
 #map { height: 620px; }
 
 /* ---------- panel de detalle ---------- */
