@@ -35,10 +35,13 @@ type Server struct {
 }
 
 func New(svc *Service, addr string) (*Server, error) {
-	// Catálogos de lugares en memoria desde el arranque: la primera búsqueda de zona es inmediata.
+	// Catálogos de los países principales en memoria desde el arranque (la primera
+	// búsqueda de zona es inmediata); los demás se cargan la primera vez que se eligen.
 	go func() {
 		for _, p := range paisesLugares {
-			_, _ = cargarLugares(p.CC)
+			if p.Principal {
+				_, _ = cargarLugares(p.CC)
+			}
 		}
 	}()
 

@@ -70,7 +70,7 @@ func TestBuscarLugaresSinResultadosNiPaisDesconocido(t *testing.T) {
 		t.Errorf("un lugar inventado no debe dar resultados: %+v", res)
 	}
 
-	if _, err := buscarLugares("FR", "paris", 10); err == nil {
+	if _, err := buscarLugares("XX", "paris", 10); err == nil {
 		t.Error("un país sin catálogo debe dar error")
 	}
 }
@@ -141,5 +141,41 @@ func TestValidarGeoConsulta(t *testing.T) {
 		if err := validarGeoConsulta(mal); err == nil {
 			t.Errorf("%q debería rechazarse", mal)
 		}
+	}
+}
+
+// Todo el mundo: 247 países; los principales con fuentes oficiales (EE. UU. con el Censo)
+// y el resto con GeoNames, buscando también por el nombre en español.
+func TestLugaresMundo(t *testing.T) {
+	if len(paisesLugares) < 200 {
+		t.Fatalf("solo %d países en el índice", len(paisesLugares))
+	}
+
+	if p := paisesLugares[7]; p.CC != "US" || !p.Principal {
+		t.Errorf("EE. UU. debe ser principal: %+v", p)
+	}
+
+	casos := []struct{ cc, q, nombre, ctx string }{
+		{"US", "brooklyn", "Brooklyn", "New York"},
+		{"US", "10001", "10001", "New York"},
+		{"US", "miami", "Miami", "Florida"},
+		{"VE", "chacao", "Chacao", "Miranda"},
+		{"VE", "caracas", "Caracas", ""},
+		{"GB", "londres", "London", "England"},
+		{"DE", "munich", "Munich", "Bavaria"},
+		{"FR", "paris", "Paris", "Île-de-France"},
+		{"BR", "sao paulo", "São Paulo", ""},
+	}
+
+	for _, c := range casos {
+		l := primero(t, c.cc, c.q)
+		if l.Nombre != c.nombre || !strings.Contains(l.Contexto, c.ctx) {
+			t.Errorf("%s %q → %s %q [%s]; quiero %q [%s]", c.cc, c.q, l.Tipo, l.Nombre, l.Contexto, c.nombre, c.ctx)
+		}
+	}
+
+	// Radio por superficie oficial del Censo (Miami ~ 145 km²: unos 7 km).
+	if m := primero(t, "US", "miami"); m.RadioKm < 4 || m.RadioKm > 15 || m.Zoom < 11 || m.Zoom > 14 {
+		t.Errorf("Miami: radio %v km, zoom %d", m.RadioKm, m.Zoom)
 	}
 }

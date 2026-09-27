@@ -28,14 +28,27 @@ import (
 // nombres y códigos de los registros oficiales de cada país. La búsqueda solo
 // admite lugares de este catálogo, nunca texto libre.
 //
-//go:embed lugares/*.json.gz
+//go:embed lugares/*.json.gz lugares/paises.json
 var lugaresFS embed.FS
 
-// Paises con catálogo, en el orden en que se muestran.
-var paisesLugares = []struct{ CC, Nombre string }{
-	{"ES", "España"}, {"MX", "México"}, {"CO", "Colombia"}, {"PE", "Perú"},
-	{"CL", "Chile"}, {"AR", "Argentina"}, {"EC", "Ecuador"},
+// paisLugar es una entrada del índice de países (lugares/paises.json): los
+// principales, con fuentes oficiales, primero; después el resto por nombre.
+type paisLugar struct {
+	CC        string `json:"cc"`
+	Nombre    string `json:"nombre"`
+	Principal bool   `json:"principal"`
 }
+
+var paisesLugares = func() []paisLugar {
+	var ps []paisLugar
+
+	data, err := lugaresFS.ReadFile("lugares/paises.json")
+	if err == nil {
+		_ = json.Unmarshal(data, &ps)
+	}
+
+	return ps
+}()
 
 // Lugar es un elemento del catálogo tal y como lo recibe la interfaz.
 type Lugar struct {
@@ -234,12 +247,27 @@ func cargarLugares(cc string) (*catLugares, error) {
 			}
 		}
 
+		// Nombres alternativos (sobre todo en español: «Londres», «Múnich») que
+		// sirven para buscar pero no se muestran, y radio por superficie oficial.
+		alias := ""
+		if len(it) > 10 {
+			alias = str(10)
+		}
+
 		l.Etiqueta = etiquetaTipo(&c, l.Tipo)
 		l.Zoom, l.RadioKm = zoomYRadio(l.Tipo, l.BBox, l.Poblacion)
+
+		if len(it) > 11 {
+			if km := num(11); km > 0 && len(l.BBox) == 0 {
+				l.RadioKm = math.Round((km+0.5)*10) / 10
+				l.Zoom = max(8, min(16, int(math.Round(math.Log2(40000/math.Max(2*km, 1))))))
+			}
+		}
+
 		l.Consulta = consultaDe(&l, pais)
 		c.lugares = append(c.lugares, l)
 		c.claves = append(c.claves, normalizar(l.Nombre))
-		c.textos = append(c.textos, normalizar(l.Nombre+" "+l.Contexto+" "+l.CP))
+		c.textos = append(c.textos, normalizar(l.Nombre+" "+l.Contexto+" "+l.CP+" "+alias))
 	}
 
 	c.Items = nil
@@ -469,19 +497,23 @@ type paisLugares struct {
 	Lugares  int               `json:"lugares"`
 }
 
-func (s *Server) apiLugaresPaises(w http.ResponseWriter, _ *http.Request) {
-	out := []paisLugares{}
-
-	for _, p := range paisesLugares {
-		c, err := cargarLugares(p.CC)
+// apiLugaresPaises devuelve el índice de países; con ?cc= devuelve además las
+// fuentes y el tamaño del catálogo de ese país (y lo deja cargado).
+func (s *Server) apiLugaresPaises(w http.ResponseWriter, r *http.Request) {
+	if cc := strings.ToUpper(r.URL.Query().Get("cc")); cc != "" {
+		c, err := cargarLugares(cc)
 		if err != nil {
-			continue
+			renderJSON(w, http.StatusBadRequest, apiError{Code: http.StatusBadRequest, Message: err.Error()})
+
+			return
 		}
 
-		out = append(out, paisLugares{CC: p.CC, Nombre: p.Nombre, Niveles: c.Niveles, Fuentes: c.Fuentes, Generado: c.Generado, Lugares: len(c.lugares)})
+		renderJSON(w, http.StatusOK, paisLugares{CC: cc, Nombre: nombrePais(cc), Niveles: c.Niveles, Fuentes: c.Fuentes, Generado: c.Generado, Lugares: len(c.lugares)})
+
+		return
 	}
 
-	renderJSON(w, http.StatusOK, out)
+	renderJSON(w, http.StatusOK, paisesLugares)
 }
 
 func (s *Server) apiLugaresVerificar(w http.ResponseWriter, r *http.Request) {

@@ -376,8 +376,155 @@ const chile = () => porCodigo("CL", { region: "Región", provincia: "Provincia",
 const ecuador = () => porCodigo("EC", { region: "Provincia", municipio: "Cantón" }, "GeoNames (CC BY 4.0) con los códigos postales de Correos del Ecuador",
   { pais: "Ecuador", cod: (f) => f[6], nombre: (f) => f[5].replace(/^Cantón /, ""), prov: () => "", codCiudad: () => null, lugares: true });
 
+/* ================= Estados Unidos: Oficina del Censo ================= */
+async function eeuu() {
+  const cat = catalogo("US", { region: "Estado", provincia: "Condado", municipio: "Ciudad / localidad" },
+    { census: "US Census Bureau · Gazetteer 2024 (oficial, dominio público)", geonames: "GeoNames (CC BY 4.0) para asociar cada ZIP a su ciudad" });
+  const G = "https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2024_Gazetteer/";
+  const leer = (n) => tsv(unzip(bajar(G + n + ".zip", n + ".zip"), n + ".txt", "census")).slice(1).map((r) => r.map((x) => x.trim()));
+  const estados = new Map(); // FIPS → nombre (GeoNames admin1 US usa la abreviatura postal)
+  const abrev = new Map();
+  for (const r of tsv(bajar("https://download.geonames.org/export/dump/admin1CodesASCII.txt", "admin1CodesASCII.txt"))) if (r[0].startsWith("US.")) abrev.set(r[0].slice(3), r[1]);
+  // Nombre sin la categoría legal del Censo: «Boston city» → «Boston», «Abanda CDP» → «Abanda».
+  const limpio = (n) => { let s = n; for (;;) { const t = s.replace(/\s+(CDP|\(balance\)|[a-z][a-z-]*)$/u, ""); if (t === s || !t) return s; s = t; } };
+  const radio = (m2) => Math.sqrt(+m2 / Math.PI) / 1000; // km, círculo de igual superficie
+  const add = (tipo, nombre, ctx, lat, lon, cp, cod, pob, km) => { cat.add(tipo, nombre, ctx, +lat, +lon, cp, cod, "census", pob); cat.items[cat.items.length - 1][10] = ""; cat.items[cat.items.length - 1][11] = Math.round(km * 10) / 10; };
+  const porEstado = new Map();
+  for (const [usps, geoid, , nombre, aland, , , , lat, lon] of leer("2024_Gaz_counties_national")) {
+    const st = abrev.get(usps) || usps;
+    estados.set(geoid.slice(0, 2), st);
+    (porEstado.get(st) || porEstado.set(st, []).get(st)).push([+lat, +lon]);
+    add("provincia", nombre, st, lat, lon, "", geoid, 0, radio(aland));
+  }
+  for (const [st, pts] of porEstado) cat.add("region", st, "Estados Unidos", media(pts.map((p) => p[0])), media(pts.map((p) => p[1])), "", "", "census");
+  // El Gazetteer no trae población: se toma de GeoNames (mismo nombre y estado) para
+  // ordenar («Brooklyn» debe dar primero el de Nueva York). También sus barrios (PPLX).
+  const norm = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const us = tsv(unzip(bajar("https://download.geonames.org/export/dump/cities500.zip", "cities500.zip"), "cities500.txt", "c500")).filter((c) => c[8] === "US" && c[6] === "P");
+  const pob = new Map();
+  for (const c of us) { const k = norm(c[1]) + "|" + c[10]; pob.set(k, Math.max(pob.get(k) || 0, +c[14])); }
+  const condados = new Map(tsv(bajar("https://download.geonames.org/export/dump/admin2Codes.txt", "admin2Codes.txt")).filter((r) => r[0].startsWith("US.")).map((r) => [r[0], r[1]]));
+  let np = 0, nb = 0;
+  const delCenso = new Set();
+  for (const [usps, geoid, , nombre, , , aland, , , , lat, lon] of leer("2024_Gaz_place_national")) {
+    const n = limpio(nombre);
+    delCenso.add(norm(n) + "|" + usps);
+    add("municipio", n, abrev.get(usps) || usps, lat, lon, "", geoid, pob.get(norm(n) + "|" + usps) || 0, radio(aland)); np++;
+  }
+  // Barrios (PPLX) y núcleos que el Censo no recoge como «place»: los distritos de
+  // Nueva York (Brooklyn, Queens… son capitales de condado en GeoNames).
+  for (const c of us.filter((c) => c[7] === "PPLX" || (!delCenso.has(norm(c[1]) + "|" + c[10]) && +c[14] >= 1000))) {
+    const st = abrev.get(c[10]);
+    if (!st) continue;
+    const cond = condados.get(`US.${c[10]}.${c[11]}`);
+    cat.add(c[7] === "PPLX" ? "barrio" : "localidad", c[1], [cond, st].filter(Boolean).join(" · "), +c[4], +c[5], "", c[0], "geonames", +c[14]);
+    cat.items[cat.items.length - 1][10] = alias(c);
+    nb++;
+  }
+  console.log(`US: ${nb} barrios y distritos (GeoNames)`);
+  // ZIP: centroide y superficie oficiales (ZCTA); ciudad y estado desde GeoNames.
+  const zipInfo = new Map();
+  for (const f of tsv(unzip(bajar("https://download.geonames.org/export/zip/US.zip", "zip_US.zip"), "US.txt", "zip_US"))) zipInfo.set(f[1], f);
+  let nz = 0;
+  for (const [zip, aland, , , , lat, lon] of leer("2024_Gaz_zcta_national")) {
+    const g = zipInfo.get(zip);
+    if (!g) continue;
+    add("cp", zip, `${g[2]} · ${g[3]}`, lat, lon, zip, "", 0, radio(aland)); nz++;
+  }
+  console.log(`US: ${porEstado.size} estados, ${estados.size} FIPS, ${np} ciudades, ${nz} ZIP (Censo)`);
+  return cat;
+}
+
+/* ================= Resto del mundo: GeoNames ================= */
+// Nombres alternativos en alfabeto latino (para buscar «Nueva York», «Londres»…), sin mostrar.
+const soloLatino = /^[\p{Script=Latin}\p{N}\s.'’()-]+$/u;
+let nombresEs = null;
+function enEspanol(id) {
+  if (!nombresEs) {
+    nombresEs = new Map();
+    const f = join(TMP, "alt_es.tsv");
+    if (!existsSync(f)) execFileSync("sh", ["-c", `unzip -p "${bajar("https://download.geonames.org/export/dump/alternateNamesV2.zip", "alternateNamesV2.zip")}" alternateNamesV2.txt | awk -F'	' '$3=="es" && $8!="1" && $7!="1" {print $2"	"$4"	"$5}' > "${f}"`]);
+    for (const [gid, n] of tsv(f)) (nombresEs.get(gid) || nombresEs.set(gid, []).get(gid)).push(n);
+  }
+  return nombresEs.get(String(id)) || [];
+}
+
+function alias(c) {
+  const vistos = new Set([c[1].toLowerCase()]);
+  const out = [];
+  for (const a of [...enEspanol(c[0]), ...(c[3] || "").split(",")]) {
+    const k = a.toLowerCase();
+    if (a.length < 3 || a.length > 40 || vistos.has(k) || !soloLatino.test(a) || /\d/.test(a)) continue;
+    vistos.add(k); out.push(a);
+    if (out.join(" ").length > 160) break;
+  }
+  return out.join(" ");
+}
+
+let ciudades500 = null, postalMundo = null, adm1 = null, adm2 = null, adm1Id = null;
+const LATAM = ["VE", "BO", "PY", "UY", "CR", "PA", "GT", "HN", "SV", "NI", "DO", "CU", "PR", "BR"];
+function generico(cc, nombrePais) {
+  if (!ciudades500) {
+    ciudades500 = new Map();
+    for (const c of tsv(unzip(bajar("https://download.geonames.org/export/dump/cities500.zip", "cities500.zip"), "cities500.txt", "c500"))) {
+      if (c[6] !== "P") continue;
+      (ciudades500.get(c[8]) || ciudades500.set(c[8], []).get(c[8])).push(c);
+    }
+    postalMundo = new Map();
+    for (const f of tsv(unzip(bajar("https://download.geonames.org/export/zip/allCountries.zip", "postal_all.zip"), "allCountries.txt", "postal_all")))
+      (postalMundo.get(f[0]) || postalMundo.set(f[0], []).get(f[0])).push(f);
+    adm1 = new Map(tsv(bajar("https://download.geonames.org/export/dump/admin1CodesASCII.txt", "admin1CodesASCII.txt")).map((r) => [r[0], r[1]]));
+    adm1Id = new Map(tsv(join(TMP, "admin1CodesASCII.txt")).map((r) => [r[1] + "|" + r[0].split(".")[0], r[3]]));
+    adm2 = new Map(tsv(bajar("https://download.geonames.org/export/dump/admin2Codes.txt", "admin2Codes.txt")).map((r) => [r[0], r[1]]));
+  }
+  let cs = ciudades500.get(cc) || [];
+  const ps = postalMundo.get(cc) || [];
+  // Latinoamérica: todas las localidades y barrios del volcado completo del país
+  // (el fichero global solo trae núcleos de más de 500 habitantes).
+  if (LATAM.includes(cc)) {
+    const ids = new Set(cs.map((c) => c[0]));
+    const vol = tsv(unzip(bajar(`https://download.geonames.org/export/dump/${cc}.zip`, `dump_${cc}.zip`), `${cc}.txt`, `volcado_${cc}`))
+      .filter((c) => c[6] === "P" && /^PPL(A\d?|C|X)?$/.test(c[7]) && c[10] && !ids.has(c[0]));
+    cs = cs.concat(vol);
+  }
+  if (!cs.length && !ps.length) return null;
+  const cat = catalogo(cc, { region: "Región / estado", provincia: "Provincia / condado", municipio: "Ciudad / localidad" },
+    { geonames: "GeoNames (CC BY 4.0), a partir de los datos de institutos estadísticos y correos nacionales" });
+  const r1 = new Map(), r2 = new Map();
+  for (const c of cs) {
+    const n1 = adm1.get(`${cc}.${c[10]}`), n2 = adm2.get(`${cc}.${c[10]}.${c[11]}`);
+    const ctx = [n2, n1].filter(Boolean).filter((x, i, a) => a.indexOf(x) === i).join(" · ") || nombrePais;
+    cat.add(c[7] === "PPLX" ? "barrio" : "municipio", c[1], ctx, +c[4], +c[5], "", c[0], "geonames", +c[14]);
+    cat.items[cat.items.length - 1][10] = alias(c);
+    if (n1) { const g = r1.get(n1) || { pts: [], cap: null }; g.pts.push(c); if (c[7] === "PPLA" || c[7] === "PPLC") g.cap = c; r1.set(n1, g); }
+    if (n2 && n1) { const k = n2 + "|" + n1; const g = r2.get(k) || { pts: [], cap: null }; g.pts.push(c); if (c[7] === "PPLA2") g.cap = c; r2.set(k, g); }
+  }
+  const centro = (g) => (g.cap ? [+g.cap[4], +g.cap[5]] : [media(g.pts.map((p) => +p[4])), media(g.pts.map((p) => +p[5]))]);
+  for (const [n, g] of r1) { const [la, lo] = centro(g); cat.add("region", n, nombrePais, la, lo, "", "", "geonames"); cat.items[cat.items.length - 1][10] = enEspanol(adm1Id.get(n + "|" + cc)).filter((x) => x !== n).join(" "); }
+  for (const [k, g] of r2) { const [n2, n1] = k.split("|"); if (n2 === n1) continue; const [la, lo] = centro(g); cat.add("provincia", n2, n1, la, lo, "", "", "geonames"); }
+  // Códigos postales agrupados, con la localidad y la región del propio fichero postal.
+  const grupos = new Map();
+  for (const f of ps) { const g = grupos.get(f[1]) || { la: [], lo: [], lug: new Set(), reg: f[3] }; if (f[9]) { g.la.push(+f[9]); g.lo.push(+f[10]); } g.lug.add(f[2]); grupos.set(f[1], g); }
+  for (const [cp, g] of grupos) {
+    if (!g.la.length) continue;
+    const lug = [...g.lug];
+    cat.add("cp", cp, [lug.slice(0, 3).join(", ") + (lug.length > 3 ? "…" : ""), g.reg].filter(Boolean).join(" · "), media(g.la), media(g.lo), cp, "", "geonames");
+  }
+  return cat;
+}
+
 /* ---------- salida ---------- */
-const cats = [await espana(), await mexico(), await colombia(), await argentina(), peru(), chile(), ecuador()];
+const PRINCIPALES = ["ES", "MX", "CO", "PE", "CL", "AR", "EC", "US"];
+const cats = [await espana(), await mexico(), await colombia(), await argentina(), peru(), chile(), ecuador(), await eeuu()];
+const nombresES = new Intl.DisplayNames(["es"], { type: "region" });
+const paisesInfo = tsv(bajar("https://download.geonames.org/export/dump/countryInfo.txt", "countryInfo.txt")).filter((r) => /^[A-Z]{2}$/.test(r[0]));
+for (const r of paisesInfo) {
+  if (PRINCIPALES.includes(r[0])) continue;
+  let nombre = r[4];
+  try { nombre = nombresES.of(r[0]) || nombre; } catch (e) { /* código sin nombre en español */ }
+  const c = generico(r[0], nombre);
+  if (c) { c.nombre = nombre; cats.push(c); }
+}
 const indice = [];
 for (const c of cats) {
   // Sin duplicados exactos (mismo tipo, nombre y contexto).
@@ -386,6 +533,14 @@ for (const c of cats) {
   const datos = JSON.stringify({ pais: c.cc, niveles: c.niveles, fuentes: c.fuentes, generado: new Date().toISOString().slice(0, 10), items });
   const gz = gzipSync(datos, { level: 9 });
   writeFileSync(join(SALIDA, `${c.cc}.json.gz`), gz);
-  indice.push({ cc: c.cc, items: items.length, kb: Math.round(gz.length / 1024) });
+  let nombre = c.nombre;
+  try { nombre = nombre || nombresES.of(c.cc); } catch (e) { nombre = c.cc; }
+  indice.push({ cc: c.cc, nombre, principal: PRINCIPALES.includes(c.cc), lugares: items.length, kb: Math.round(gz.length / 1024) });
 }
-console.table(indice);
+// Índice de países: los principales primero (en su orden) y después el resto por nombre.
+indice.sort((a, b) => (a.principal !== b.principal ? (a.principal ? -1 : 1) : a.principal ? PRINCIPALES.indexOf(a.cc) - PRINCIPALES.indexOf(b.cc) : a.nombre.localeCompare(b.nombre, "es")));
+writeFileSync(join(SALIDA, "paises.json"), JSON.stringify(indice.map(({ cc, nombre, principal }) => ({ cc, nombre, principal }))));
+console.table(indice.filter((i) => i.principal));
+const resto = indice.filter((i) => !i.principal);
+console.log(`Resto del mundo: ${resto.length} países, ${resto.reduce((a, i) => a + i.lugares, 0)} lugares, ${Math.round(resto.reduce((a, i) => a + i.kb, 0) / 1024)} MB · mayores: ${[...resto].sort((a, b) => b.kb - a.kb).slice(0, 6).map((i) => `${i.cc} ${i.kb} KB`).join(", ")}`);
+console.log("Venezuela:", JSON.stringify(indice.find((i) => i.cc === "VE")));

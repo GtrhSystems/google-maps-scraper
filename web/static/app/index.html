@@ -563,14 +563,24 @@ async function prepararZonas(refrescar) {
     try { S.paises = await api("/api/v1/lugares/paises"); } catch (e) { S.paises = []; toast("No se pudo cargar el catálogo de lugares: " + e.message, true); }
   }
   const sel = $("#pais");
-  sel.innerHTML = S.paises.map((p) => `<option value="${p.cc}">${esc(p.nombre)}</option>`).join("");
-  sel.value = S.pais || (S.paises[0] || {}).cc || "";
-  const fuentes = () => {
-    const p = S.paises.find((x) => x.cc === sel.value);
-    $("#zonaHint").innerHTML = p ? `Solo se pueden elegir lugares reales del catálogo oficial (${fmtN(p.lugares)} lugares). Fuentes: ${Object.values(p.fuentes).map(esc).join(" · ")}.` : "";
+  const opt = (p) => `<option value="${p.cc}">${esc(p.nombre)}</option>`;
+  sel.innerHTML = `<optgroup label="Principales (fuentes oficiales)">${S.paises.filter((p) => p.principal).map(opt).join("")}</optgroup>
+    <optgroup label="Todos los países">${S.paises.filter((p) => !p.principal).map(opt).join("")}</optgroup>`;
+  const guardado = localStorage.getItem("gmaps.pais");
+  sel.value = S.pais || (S.paises.some((p) => p.cc === guardado) ? guardado : (S.paises[0] || {}).cc || "");
+  // Fuentes del país elegido (su catálogo se carga en el servidor la primera vez).
+  const fuentes = async () => {
+    const cc = sel.value;
+    $("#zonaHint").innerHTML = `<i data-lucide="loader-circle" class="spin" style="width:12px;height:12px;vertical-align:-2px"></i> Cargando el catálogo de lugares…`;
+    icons();
+    try {
+      const p = await api(`/api/v1/lugares/paises?cc=${cc}`);
+      if (sel.value !== cc) return;
+      $("#zonaHint").innerHTML = `Solo se pueden elegir lugares reales del catálogo (${fmtN(p.lugares)} lugares). Fuentes: ${Object.values(p.fuentes).map(esc).join(" · ")}.`;
+    } catch (e) { $("#zonaHint").textContent = "No se pudo cargar el catálogo de este país: " + e.message; }
   };
   fuentes();
-  sel.onchange = () => { S.pais = sel.value; $("#zonaQ").value = ""; cerrarLista(); fuentes(); $("#zonaQ").focus(); };
+  sel.onchange = () => { S.pais = sel.value; localStorage.setItem("gmaps.pais", sel.value); $("#zonaQ").value = ""; cerrarLista(); fuentes(); $("#zonaQ").focus(); };
 
   const inp = $("#zonaQ"), lista = $("#zonaL");
   let t = null, pedida = 0, res = [], act = -1;
@@ -944,7 +954,10 @@ async function verResultados(id) {
 }
 
 /* ================= zonas elegidas ================= */
-const CIFRAS_CP = { ES: 5, MX: 5, PE: 5, CO: 6, EC: 6, CL: 7, AR: 4 };
+// Expresión con la «forma» de un código postal (28010 → 5 cifras; SW1A 1AA o K1A 0B1
+// → letras y cifras en ese orden): sirve para cualquier país.
+const formaCP = (cp) => [...plano(cp)].map((c) => (/\d/.test(c) ? "\\d" : /[a-z]/.test(c) ? "[a-z]" : /\s/.test(c) ? "\\s?" : c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))).join("");
+const sinEspacios = (s) => plano(s).replace(/\s+/g, "");
 const distKm = (a1, o1, a2, o2) => {
   const r = Math.PI / 180, x = Math.sin(((a2 - a1) * r) / 2) ** 2 + Math.cos(a1 * r) * Math.cos(a2 * r) * Math.sin(((o2 - o1) * r) / 2) ** 2;
   return 12742 * Math.asin(Math.sqrt(x));
@@ -961,9 +974,12 @@ function enZona(l) {
   const dir = plano([l.address, l.city, l.borough].filter(Boolean).join(" "));
   const conCoord = !!(l.latitude || l.longitude);
   const ok = zs.some((z) => {
-    // Códigos postales de la dirección, con la longitud oficial del país de la zona.
-    const cps = dir.match(new RegExp(`\\b\\d{${CIFRAS_CP[z.pais] || 5}}\\b`, "g")) || [];
-    if (z.tipo === "cp" && cps.length) return cps.includes(z.cp);
+    // Códigos postales de la dirección con la misma forma que el de la zona. Los de
+    // 4 cifras o menos (Argentina…) se confunden con números de portal: ahí manda la geometría.
+    if (z.tipo === "cp" && !/^\d{1,4}$/.test(sinEspacios(z.cp))) {
+      const cps = (dir.match(new RegExp(`(^|[^a-z0-9])(${formaCP(z.cp)})(?![a-z0-9])`, "g")) || []).map((m) => sinEspacios(m.replace(/^[^a-z0-9]/, "")));
+      if (cps.length) return cps.includes(sinEspacios(z.cp));
+    }
     if (!conCoord) return ` ${dir} `.includes(` ${plano(z.nombre)} `);
     const m = 0.005;
     if (z.bbox && l.latitude >= z.bbox[0] - m && l.latitude <= z.bbox[2] + m && l.longitude >= z.bbox[1] - m && l.longitude <= z.bbox[3] + m) return true;
