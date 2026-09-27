@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="/static/app/lucide.min.js"></script>
+<script src="/static/app/brands.js"></script>
 <style>
 :root {
   --bg: #f5f7f9; --surface: #ffffff; --surface-2: #f0f3f6; --line: #e1e6eb; --line-strong: #cdd5dd;
@@ -194,6 +195,12 @@ tbody tr.sel td { background: var(--accent-soft); }
 .scan .bar { width: 120px; height: 4px; background: var(--surface-2); border-radius: 2px; overflow: hidden; }
 .scan .bar i { display: block; height: 100%; background: var(--accent); border-radius: 2px; transition: width .4s; }
 .opp { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: var(--r-sm); background: var(--warn-soft); color: var(--warn); }
+.brand { width: 14px; height: 14px; flex: none; display: inline-block; vertical-align: -2px; object-fit: contain; border-radius: 3px; }
+.net .brand, .ad .brand, .wa .brand { width: 13px; height: 13px; }
+.btn-primary .brand { width: 18px; height: 18px; padding: 2px; background: #fff; border-radius: 4px; box-sizing: border-box; }
+.dl > .brand { width: 16px; height: 16px; margin-top: 2px; }
+.soc-h b .brand { width: 16px; height: 16px; margin-right: 6px; vertical-align: -3px; }
+.plat .brand { width: 12px; height: 12px; margin-right: 4px; vertical-align: -2px; }
 #map { height: 620px; }
 
 /* ---------- panel de detalle ---------- */
@@ -688,7 +695,7 @@ async function verResultados(id) {
       <div class="sub">${esc((job.Data.keywords || []).join(" · "))} — ${esc(fmtDate(job.Date))}</div>
     </div>
     <div class="acts">
-      <button class="btn btn-primary" id="dl"><i data-lucide="download"></i>Descargar Excel</button>
+      <button class="btn btn-primary" id="dl">${marca("excel", "download")}Descargar Excel</button>
       <button class="btn" id="rep"><i data-lucide="rotate-ccw"></i>Repetir</button>
       <button class="btn btn-danger" id="del"><i data-lucide="trash-2"></i>Eliminar</button>
     </div>
@@ -710,12 +717,12 @@ async function verResultados(id) {
     <div class="chips" id="chips">
       <span class="t">Mostrar solo:</span>
       <button class="chip" data-k="tel"><i data-lucide="phone"></i>Con teléfono</button>
-      <button class="chip" data-k="movil"><i data-lucide="message-circle"></i>Con móvil / WhatsApp</button>
+      <button class="chip" data-k="movil">${marca("whatsapp")}Con móvil / WhatsApp</button>
       <button class="chip" data-k="email"><i data-lucide="mail"></i>Con email</button>
       <button class="chip" data-k="web"><i data-lucide="globe"></i>Con web</button>
       <button class="chip" data-k="sinweb" title="Negocios que aún no tienen página web: candidatos para venderles una"><i data-lucide="lightbulb"></i>Sin web (oportunidad)</button>
-      <button class="chip" data-k="meta" title="Tienen el píxel de Meta instalado: han preparado su web para anunciarse en Facebook e Instagram"><i data-lucide="target"></i>Con píxel de Meta</button>
-      <button class="chip" data-k="nometa" title="Tienen web pero no el píxel de Meta: no miden anuncios de Facebook e Instagram"><i data-lucide="crosshair"></i>Web sin píxel de Meta</button>
+      <button class="chip" data-k="meta" title="Tienen el píxel de Meta instalado: han preparado su web para anunciarse en Facebook e Instagram">${marca("meta")}Con píxel de Meta</button>
+      <button class="chip" data-k="nometa" title="Tienen web pero no el píxel de Meta: no miden anuncios de Facebook e Instagram">${marca("meta")}Web sin píxel de Meta</button>
       <button class="chip" data-k="chat" title="Tienen chat, chatbot o agente IA en su web"><i data-lucide="bot"></i>Con chat o agente IA</button>
       <button class="chip" data-k="nochat" title="Tienen web pero nadie atiende en ella: candidatos a un agente IA"><i data-lucide="message-square-off"></i>Web sin chat (oportunidad)</button>
       <button class="chip" data-k="redes" title="Tienen al menos una red social enlazada"><i data-lucide="share-2"></i>Con redes sociales</button>
@@ -798,11 +805,11 @@ function pintarKpis() {
   const metaV = t.status === "idle" ? "—" : t.status === "running" && !analizadas.length ? "…" : fmtN(meta);
   const metaP = analizadas.length ? `${pct(meta, analizadas.length)} de las webs` : t.status === "running" ? "analizando…" : "";
   $("#kpis").innerHTML = [["store", "Negocios", fmtN(r.total), ""], ["phone", "Con teléfono", fmtN(r.tel), pct(r.tel, r.total)],
-    ["message-circle", "Móvil (WhatsApp)", fmtN(r.movil), pct(r.movil, r.total)], ["mail", "Con email", fmtN(r.email), pct(r.email, r.total)],
-    ["globe", "Sin página web", fmtN(r.sinWeb), pct(r.sinWeb, r.total)], ["target", "Con píxel de Meta", metaV, metaP],
+    [marca("whatsapp"), "Móvil (WhatsApp)", fmtN(r.movil), pct(r.movil, r.total)], ["mail", "Con email", fmtN(r.email), pct(r.email, r.total)],
+    ["globe", "Sin página web", fmtN(r.sinWeb), pct(r.sinWeb, r.total)], [marca("meta"), "Con píxel de Meta", metaV, metaP],
     ["bot", "Con chat o agente IA", t.status === "idle" ? "—" : !analizadas.length ? "…" : fmtN(conChat), analizadas.length ? `${fmtN(conIA)} con agente IA` : ""],
     ["star", "Valoración media", media ? media.toFixed(1).replace(".", ",") : "—", "sobre 5"]]
-    .map(([i, l, v, p]) => `<div class="kpi"><div class="l"><i data-lucide="${i}"></i>${l}</div><div class="v">${v}</div><div class="p">${p || "&nbsp;"}</div></div>`).join("");
+    .map(([i, l, v, p]) => `<div class="kpi"><div class="l">${i.startsWith("<") ? i : `<i data-lucide="${i}"></i>`}${l}</div><div class="v">${v}</div><div class="p">${p || "&nbsp;"}</div></div>`).join("");
   icons();
 }
 
@@ -810,40 +817,40 @@ function celdaPublicidad(l) {
   if (!l.website) return `<span class="none">—</span>`;
   const t = techDe(l);
   if (!t) return S.res.tech.status === "running" ? `<span class="none">Analizando…</span>` : `<span class="none">Sin analizar</span>`;
-  if (t.status === "social") return `<span class="none">Su «web» es un perfil de ${esc(t.social)}</span>`;
-  if (t.status === "thirdparty") return `<span class="none" title="Lo que hay en esa página es de la plataforma, no del negocio">Su «web» es su ficha en ${esc(t.social)}</span>`;
+  if (t.status === "social") return `<span class="none">Su «web» es un perfil de ${marca(t.social)} ${esc(t.social)}</span>`;
+  if (t.status === "thirdparty") return `<span class="none" title="Lo que hay en esa página es de la plataforma, no del negocio">Su «web» es su ficha en ${marca(t.social)} ${esc(t.social)}</span>`;
   if (t.status !== "ok") return `<span class="none" title="${esc(t.error || "")}">No se pudo revisar</span>`;
   const tags = [];
-  if (t.meta_pixel) tags.push(`<span class="ad ad-meta" title="${esc((t.meta_ids || []).join(", "))}"><i data-lucide="target"></i>Píxel de Meta</span>`);
-  if (t.google_ads) tags.push(`<span class="ad">Google Ads</span>`);
-  if (t.tiktok) tags.push(`<span class="ad">TikTok</span>`);
-  if (t.linkedin) tags.push(`<span class="ad">LinkedIn</span>`);
-  if (t.analytics) tags.push(`<span class="ad">Analytics</span>`);
-  for (const c of t.chats || []) tags.push(`<span class="ad ${c.kind === "ia" ? "ad-ia" : c.kind === "whatsapp" ? "ad-wa" : ""}" title="${esc(TIPO_CHAT[c.kind])}"><i data-lucide="${c.kind === "ia" ? "bot" : c.kind === "whatsapp" ? "message-circle" : "messages-square"}"></i>${esc(c.name)}</span>`);
-  if (!t.meta_pixel && t.unsure) tags.unshift(`<span class="ad" title="${esc(t.unsure)}">Píxel de Meta: no verificable</span>`);
+  if (t.meta_pixel) tags.push(`<span class="ad ad-meta" title="${esc((t.meta_ids || []).join(", "))}">${marca("meta")}Píxel de Meta</span>`);
+  if (t.google_ads) tags.push(`<span class="ad">${marca("googleads")}Google Ads</span>`);
+  if (t.tiktok) tags.push(`<span class="ad">${marca("tiktok")}TikTok</span>`);
+  if (t.linkedin) tags.push(`<span class="ad">${marca("linkedin")}LinkedIn</span>`);
+  if (t.analytics) tags.push(`<span class="ad">${marca("googleanalytics")}Analytics</span>`);
+  for (const c of t.chats || []) tags.push(`<span class="ad ${c.kind === "ia" ? "ad-ia" : c.kind === "whatsapp" ? "ad-wa" : ""}" title="${esc(TIPO_CHAT[c.kind])}">${iconoChat(c)}${esc(c.name)}</span>`);
+  if (!t.meta_pixel && t.unsure) tags.unshift(`<span class="ad" title="${esc(t.unsure)}">${marca("meta")}Píxel de Meta: no verificable</span>`);
   return tags.length ? `<div class="ads">${tags.join("")}</div>` : `<span class="none">Sin publicidad ni chat</span>`;
 }
 
 function seccionPublicidad(l) {
   const biblioteca = `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=ALL&search_type=keyword_unordered&q=${encodeURIComponent(l.title)}`;
-  const enlace = `<div style="margin-top:10px"><a href="${biblioteca}" target="_blank" rel="noopener"><i data-lucide="external-link" style="width:13px;height:13px;vertical-align:-2px"></i> Ver si tiene anuncios activos en la Biblioteca de anuncios de Meta</a><div class="hint">Tener el píxel indica que su web está preparada para medir anuncios de Facebook e Instagram; no garantiza que esté anunciándose ahora.</div></div>`;
+  const enlace = `<div style="margin-top:10px"><a href="${biblioteca}" target="_blank" rel="noopener">${marca("meta")} Ver si tiene anuncios activos en la Biblioteca de anuncios de Meta</a><div class="hint">Tener el píxel indica que su web está preparada para medir anuncios de Facebook e Instagram; no garantiza que esté anunciándose ahora.</div></div>`;
   if (!l.website) return `<div class="sec"><h4>Publicidad y medición</h4><p class="none" style="margin:0">No tiene web que revisar.</p>${enlace}</div>`;
   const t = techDe(l);
   let cuerpo;
   if (!t) cuerpo = `<p class="none" style="margin:0">${S.res.tech.status === "running" ? "Analizando su web…" : "Sin analizar."}</p>`;
-  else if (t.status === "social") cuerpo = `<p style="margin:0">Su «web» en Google es un perfil de <b>${esc(t.social)}</b>: no tiene página propia.</p>`;
-  else if (t.status === "thirdparty") cuerpo = `<p style="margin:0">Su «web» en Google es su ficha en <b>${esc(t.social)}</b>, una plataforma externa: no tiene página propia. <span class="opp"><i data-lucide="lightbulb"></i>Oportunidad</span></p>`;
+  else if (t.status === "social") cuerpo = `<p style="margin:0">Su «web» en Google es un perfil de ${marca(t.social)} <b>${esc(t.social)}</b>: no tiene página propia.</p>`;
+  else if (t.status === "thirdparty") cuerpo = `<p style="margin:0">Su «web» en Google es su ficha en ${marca(t.social)} <b>${esc(t.social)}</b>, una plataforma externa: no tiene página propia. <span class="opp"><i data-lucide="lightbulb"></i>Oportunidad</span></p>`;
   else if (t.status !== "ok") cuerpo = `<p class="none" style="margin:0">No se pudo revisar: ${esc(t.error || "error")}.</p>`;
   else {
     const si = (v, extra = "") => v === null ? "" : v ? `<b style="color:var(--ok)">Sí</b>${extra}` : `<span class="none">No</span>`;
-    const fila = (ic, k, v) => `<i data-lucide="${ic}"></i><div><div class="k">${k}</div>${v}</div>`;
+    const fila = (ic, k, v) => `${ic.startsWith("<") ? ic : `<i data-lucide="${ic}"></i>`}<div><div class="k">${k}</div>${v}</div>`;
     cuerpo = `<div class="dl">
-      ${fila("target", "Píxel de Meta (Facebook / Instagram)", (!t.meta_pixel && t.unsure ? `<span class="none">No verificable</span><div class="none">${esc(t.unsure)}</div>` : "") + si(t.meta_pixel || !t.unsure ? t.meta_pixel : null, (t.meta_ids || []).length ? ` · ID ${t.meta_ids.map(esc).join(", ")}` : "") + (t.meta_via_gtm ? `<div class="none">Instalado a través de Google Tag Manager</div>` : ""))}
-      ${fila("badge-dollar-sign", "Google Ads", si(t.google_ads, (t.google_ads_ids || []).length ? " · " + t.google_ads_ids.map(esc).join(", ") : ""))}
-      ${fila("chart-line", "Google Analytics", si(t.analytics))}
-      ${fila("music-2", "TikTok Ads", si(t.tiktok))}
-      ${fila("briefcase", "LinkedIn Ads", si(t.linkedin))}
-      ${fila("layout-template", "Hecha con", t.platform ? esc(t.platform) : `<span class="none">No identificado</span>`)}
+      ${fila(marca("meta"), "Píxel de Meta (Facebook / Instagram)", (!t.meta_pixel && t.unsure ? `<span class="none">No verificable</span><div class="none">${esc(t.unsure)}</div>` : "") + si(t.meta_pixel || !t.unsure ? t.meta_pixel : null, (t.meta_ids || []).length ? ` · ID ${t.meta_ids.map(esc).join(", ")}` : "") + (t.meta_via_gtm ? `<div class="none">Instalado a través de Google Tag Manager</div>` : ""))}
+      ${fila(marca("googleads"), "Google Ads", si(t.google_ads, (t.google_ads_ids || []).length ? " · " + t.google_ads_ids.map(esc).join(", ") : ""))}
+      ${fila(marca("googleanalytics"), "Google Analytics", si(t.analytics))}
+      ${fila(marca("tiktok"), "TikTok Ads", si(t.tiktok))}
+      ${fila(marca("linkedin"), "LinkedIn Ads", si(t.linkedin))}
+      ${fila(marca(t.platform, "layout-template"), "Hecha con", t.platform ? esc(t.platform) : `<span class="none">No identificado</span>`)}
     </div>`;
   }
   return `<div class="sec"><h4>Publicidad y medición</h4>${cuerpo}${enlace}</div>`;
@@ -851,6 +858,7 @@ function seccionPublicidad(l) {
 
 /* ================= redes sociales y chat ================= */
 const TIPO_CHAT = { ia: "Agente IA / chatbot", chat: "Chat en vivo (algunos incluyen IA opcional)", whatsapp: "Botón de WhatsApp" };
+const iconoChat = (c) => marca(c.name, c.kind === "ia" ? "bot" : c.kind === "whatsapp" ? "message-circle" : "messages-square");
 
 // Redes del negocio: las enlazadas desde su web o, si su «web» es un perfil, ese perfil.
 function redesDe(l, tech) {
@@ -871,7 +879,7 @@ function celdaRedes(l) {
   return `<div class="nets">${ks.map((k) => {
     const st = socialDe(r[k]);
     const n = st && st.status === "ok" && st.followers ? ` <small>${fmtK(st.followers)}</small>` : "";
-    return `<a class="net" href="${esc(r[k])}" target="_blank" rel="noopener" title="${REDES[k][1]}" onclick="event.stopPropagation()">${REDES[k][0]}${n}</a>`;
+    return `<a class="net" href="${esc(r[k])}" target="_blank" rel="noopener" title="${REDES[k][1]}" onclick="event.stopPropagation()">${marca(k) || REDES[k][0]}${n}</a>`;
   }).join("")}</div>`;
 }
 
@@ -908,7 +916,7 @@ function seccionChat(l) {
   if (!t || t.status !== "ok") return "";
   const cs = t.chats || [];
   const cuerpo = cs.length
-    ? `<div class="dl">${cs.map((c) => `<i data-lucide="${c.kind === "ia" ? "bot" : c.kind === "whatsapp" ? "message-circle" : "messages-square"}"></i><div><div class="k">${esc(TIPO_CHAT[c.kind])}</div>${esc(c.name)}</div>`).join("")}</div>`
+    ? `<div class="dl">${cs.map((c) => `${iconoChat(c)}<div><div class="k">${esc(TIPO_CHAT[c.kind])}</div>${esc(c.name)}</div>`).join("")}</div>`
     : `<p style="margin:0"><span class="opp"><i data-lucide="lightbulb"></i>Oportunidad</span> Su web no tiene chat ni agente IA: nadie atiende a quien la visita.</p>`;
   return `<div class="sec"><h4>Chat y agentes IA en su web</h4>${cuerpo}</div>`;
 }
@@ -936,7 +944,7 @@ function seccionRedes(l) {
     } else if (st) datos = `<p>${esc(st.message || "Sin datos")}</p>`;
     else if (["facebook", "instagram", "tiktok", "youtube"].includes(k)) datos = sc.status === "running" ? `<p>Consultando…</p>` : "";
     else if (k !== "whatsapp") datos = `<p>${REDES[k][1]} exige iniciar sesión: solo el enlace.</p>`;
-    return `<div class="soc"><div class="soc-h"><b>${REDES[k][1]}${st && st.verified ? ' <i data-lucide="badge-check" style="width:13px;height:13px;color:var(--accent)"></i>' : ""}</b>
+    return `<div class="soc"><div class="soc-h"><b>${marca(k)}${REDES[k][1]}${st && st.verified ? ' <i data-lucide="badge-check" style="width:13px;height:13px;color:var(--accent)"></i>' : ""}</b>
       <a href="${esc(u)}" target="_blank" rel="noopener">${esc(nombre)}</a></div>${datos}</div>`;
   }).join("");
   const boton = sc.status === "idle" && ks.some((k) => ["facebook", "instagram", "tiktok", "youtube"].includes(k))
@@ -1010,10 +1018,10 @@ function pintarPanel() {
         </div></td>
         <td><div class="contact">
           ${l.phone ? `<div><i data-lucide="phone"></i><a href="tel:${esc(digitos(l.phone))}" onclick="event.stopPropagation()">${esc(l.phone)}</a>
-            ${movil ? `<a class="wa" href="${waLink(l.phone)}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><i data-lucide="message-circle"></i>WhatsApp</a>` : ""}</div>` : `<div class="none"><i data-lucide="phone-off"></i>Sin teléfono</div>`}
+            ${movil ? `<a class="wa" href="${waLink(l.phone)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${marca("whatsapp")}WhatsApp</a>` : ""}</div>` : `<div class="none"><i data-lucide="phone-off"></i>Sin teléfono</div>`}
           ${(l.emails || []).length ? l.emails.map((m) => `<div><i data-lucide="mail"></i><a href="mailto:${esc(m)}" onclick="event.stopPropagation()">${esc(m)}</a></div>`).join("") : `<div class="none"><i data-lucide="mail-x"></i>Sin email</div>`}
         </div></td>
-        <td>${l.website ? `<a href="${esc(l.website)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(dominio(l.website))}</a>${(techDe(l) || {}).platform ? `<span class="plat">${esc(techDe(l).platform)}</span>` : ""}` : `<span class="opp"><i data-lucide="lightbulb"></i>Sin web</span>`}${celdaRedes(l)}</td>
+        <td>${l.website ? `<a href="${esc(l.website)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(dominio(l.website))}</a>${(techDe(l) || {}).platform ? `<span class="plat">${marca(techDe(l).platform)}${esc(techDe(l).platform)}</span>` : ""}` : `<span class="opp"><i data-lucide="lightbulb"></i>Sin web</span>`}${celdaRedes(l)}</td>
         <td>${celdaPublicidad(l)}</td>
         <td>${l.rating ? `<span class="stars"><i data-lucide="star"></i>${l.rating.toFixed(1).replace(".", ",")} <small>(${fmtN(l.reviews)})</small></span>` : `<span class="none">Sin reseñas</span>`}</td>
         <td>${esc(l.borough || l.city || "")}</td>
@@ -1034,8 +1042,8 @@ function abrirDetalle(i) {
   const horas = l.hours && Object.keys(l.hours).length
     ? `<table class="hours">${DIAS.map((d) => `<tr class="${d === hoy ? "today" : ""}"><td style="text-transform:capitalize">${d}</td><td>${esc((l.hours[d] || ["Cerrado"]).join(", "))}</td></tr>`).join("")}</table>`
     : `<p class="none" style="margin:0">Google no muestra horario.</p>`;
-  const enlaces = [...(l.reservations || []).map((x) => ["calendar-check", "Reservar en " + x.source, x.link]),
-                   ...(l.order_online || []).map((x) => ["shopping-bag", "Pedir en " + x.source, x.link]),
+  const enlaces = [...(l.reservations || []).map((x) => ["calendar-check", "Reservar en " + x.source, x.link, x.source]),
+                   ...(l.order_online || []).map((x) => ["shopping-bag", "Pedir en " + x.source, x.link, x.source]),
                    ...(l.menu ? [["book-open", "Ver carta", l.menu]] : [])];
   const fila = (ic, k, v) => `<i data-lucide="${ic}"></i><div><div class="k">${k}</div>${v}</div>`;
   const movil = esMovil(l.phone);
@@ -1048,7 +1056,7 @@ function abrirDetalle(i) {
     <div class="drawer-b">
       ${l.thumbnail ? `<img class="photo" referrerpolicy="no-referrer" src="${esc(l.thumbnail)}" alt="">` : ""}
       <div class="dl">
-        ${fila("phone", "Teléfono", l.phone ? `<a href="tel:${esc(digitos(l.phone))}">${esc(l.phone)}</a> ${movil ? `<a class="wa" href="${waLink(l.phone)}" target="_blank" rel="noopener"><i data-lucide="message-circle"></i>WhatsApp</a>` : ""}` : `<span class="none">No disponible</span>`)}
+        ${fila("phone", "Teléfono", l.phone ? `<a href="tel:${esc(digitos(l.phone))}">${esc(l.phone)}</a> ${movil ? `<a class="wa" href="${waLink(l.phone)}" target="_blank" rel="noopener">${marca("whatsapp")}WhatsApp</a>` : ""}` : `<span class="none">No disponible</span>`)}
         ${fila("mail", "Email", (l.emails || []).length ? l.emails.map((m) => `<a href="mailto:${esc(m)}">${esc(m)}</a>`).join("<br>") : `<span class="none">No encontrado en su web</span>`)}
         ${fila("globe", "Página web", l.website ? `<a href="${esc(l.website)}" target="_blank" rel="noopener">${esc(dominio(l.website))}</a>` : `<span class="opp"><i data-lucide="lightbulb"></i>No tiene: oportunidad de venta</span>`)}
         ${fila("map-pin", "Dirección", esc(l.address || "—") + (l.borough ? `<div class="none">${esc(l.borough)}</div>` : ""))}
@@ -1060,10 +1068,10 @@ function abrirDetalle(i) {
       ${seccionRedes(l)}
       ${seccionPublicidad(l)}
       <div class="sec"><h4>Horario</h4>${horas}</div>
-      ${enlaces.length ? `<div class="sec"><h4>Enlaces</h4><div class="dl">${enlaces.map(([ic, t, u]) => `<i data-lucide="${ic}"></i><div><a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)}</a></div>`).join("")}</div></div>` : ""}
+      ${enlaces.length ? `<div class="sec"><h4>Enlaces</h4><div class="dl">${enlaces.map(([ic, t, u, src]) => `${marca(src, ic)}<div><a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)}</a></div>`).join("")}</div></div>` : ""}
     </div>
     <div class="drawer-f">
-      <a class="btn btn-primary" href="${esc(l.link)}" target="_blank" rel="noopener" style="flex:1"><i data-lucide="map"></i>Abrir en Google Maps</a>
+      <a class="btn btn-primary" href="${esc(l.link)}" target="_blank" rel="noopener" style="flex:1">${marca("googlemaps")}Abrir en Google Maps</a>
       <button class="btn" id="dCopy"><i data-lucide="copy"></i>Copiar datos</button>
     </div>`;
   $("#drawer").classList.add("open");
