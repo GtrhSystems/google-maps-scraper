@@ -31,6 +31,8 @@ func TestBuscarLugares(t *testing.T) {
 		{"PE", "miraflores lima", "municipio", "Miraflores", "Lima", "150122"},
 		{"CL", "chillan", "municipio", "Chillán", "Región de Ñuble", "16101"},
 		{"AR", "palermo", "municipio", "Palermo", "Ciudad Autónoma de Buenos Aires", ""},
+		{"CO", "chapinero", "barrio", "Chapinero", "Bogotá", "11001"},
+		{"CO", "el poblado", "barrio", "El Poblado", "Medellín", "05001"},
 	}
 
 	for _, c := range casos {

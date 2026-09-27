@@ -37,9 +37,10 @@ function bajar(url, fichero) {
   }
   return f;
 }
-function unzip(zip, dentro) {
-  const f = join(TMP, dentro);
-  if (!existsSync(f)) execFileSync("unzip", ["-o", "-q", zip, dentro, "-d", TMP]);
+function unzip(zip, dentro, sub = "") {
+  const dir = join(TMP, sub);
+  const f = join(dir, dentro);
+  if (!existsSync(f)) { mkdirSync(dir, { recursive: true }); execFileSync("unzip", ["-o", "-q", zip, dentro, "-d", dir]); }
   return f;
 }
 async function json(url, fichero) {
@@ -86,13 +87,23 @@ function catalogo(cc, niveles, fuentes) {
 }
 
 // Localidades y barrios de GeoNames que no repiten el nombre de su municipio.
-function localidades(cat, cc, municipioDe, fuente = "geonames") {
+// Además de cities1000 (núcleos de más de 1.000 habitantes), los barrios (PPLX)
+// del volcado completo del país, solo si traen el código de su municipio oficial.
+function localidades(cat, cc, municipioDe, fuente = "geonames", barriosDelVolcado = false) {
   const norm = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const vistos = new Set();
+  let filas = ciudades.filter((c) => c[8] === cc);
+  if (barriosDelVolcado) {
+    const f = unzip(bajar(`https://download.geonames.org/export/dump/${cc}.zip`, `dump_${cc}.zip`), `${cc}.txt`, `volcado_${cc}`);
+    filas = filas.concat(tsv(f).filter((c) => c[7] === "PPLX"));
+  }
   let n = 0;
-  for (const c of ciudades.filter((c) => c[8] === cc)) {
+  for (const c of filas) {
     const m = municipioDe(c);
     if (!m) continue;
-    if (norm(c[1]) === norm(m.nombre)) continue;
+    const k = norm(c[1]) + "|" + m.cod;
+    if (norm(c[1]) === norm(m.nombre) || vistos.has(k)) continue;
+    vistos.add(k);
     const tipo = c[7] === "PPLX" ? "barrio" : "localidad";
     cat.add(tipo, c[1], m.ctxCompleto, +c[4], +c[5], "", m.cod, fuente, +c[14]);
     n++;
@@ -203,7 +214,7 @@ async function espana() {
   }
   for (const [ca, g] of porCA) if (g.prov.size > 1 || PROV[[...g.prov][0]] !== CCAA[ca])
     cat.add("region", CCAA[ca], "España", media(g.m.map((m) => m.lat)), media(g.m.map((m) => m.lon)), "", ca, "ine");
-  const nl = localidades(cat, "ES", (c) => munis.get(c[12]));
+  const nl = localidades(cat, "ES", (c) => munis.get(c[12]), "geonames", true);
   const ncp = codigosPostales(cat, postal.ES, (f) => munis.get(f[8]), "geonames");
   console.log(`ES: ${munis.size} municipios INE (${sinCoord} sin coordenadas), ${nl} localidades/barrios, ${ncp} CP`);
   return cat;
@@ -261,7 +272,7 @@ async function colombia() {
     cat.add("municipio", nombre, dep, lat, lon, "", cmun, "dane");
   }
   for (const [c, d] of deps) cat.add("region", d.n, "Colombia", media(d.m.map((m) => m.lat)), media(d.m.map((m) => m.lon)), "", c, "dane");
-  const nl = localidades(cat, "CO", (c) => munis.get(c[11]));
+  const nl = localidades(cat, "CO", (c) => munis.get(c[11]), "geonames", true);
   const ncp = codigosPostales(cat, postal.CO, (f) => munis.get(f[6]));
   console.log(`CO: ${deps.size} departamentos, ${munis.size} municipios DIVIPOLA, ${nl} localidades, ${ncp} CP`);
   return cat;
@@ -338,7 +349,7 @@ function porCodigo(cc, niveles, fuenteTxt, conf) {
   for (const [k, ms] of provs) cat.add("provincia", k.split("|")[0], k.split("|")[1], media(ms.map((m) => m.lat)), media(ms.map((m) => m.lon)), "", "", "geonames");
   for (const [r, ms] of regs) cat.add("region", r, conf.pais, media(ms.map((m) => m.lat)), media(ms.map((m) => m.lon)), "", "", "geonames");
   if (conf.lugares) for (const f of postal[cc]) { const m = munis.get(conf.cod(f)); if (m && f[2] !== m.nombre) cat.add("localidad", f[2], `CP ${f[1]} · ${m.ctxCompleto}`, +f[9], +f[10], f[1], m.cod, "geonames"); }
-  const nl = localidades(cat, cc, (c) => munis.get(conf.codCiudad(c)));
+  const nl = localidades(cat, cc, (c) => munis.get(conf.codCiudad(c)), "geonames", !!conf.barrios);
   const ncp = codigosPostales(cat, postal[cc], (f) => munis.get(conf.cod(f)), "geonames", conf.notaCP || "");
   console.log(`${cc}: ${regs.size} regiones, ${munis.size} ${niveles.municipio.toLowerCase()}s, ${nl} localidades, ${ncp} CP`);
   return cat;
@@ -347,7 +358,7 @@ function porCodigo(cc, niveles, fuenteTxt, conf) {
 // Departamentos con el nombre que usa el INEI.
 const DEP_PE = { Ancash: "Áncash", Cuzco: "Cusco" };
 const peru = () => porCodigo("PE", { region: "Departamento", provincia: "Provincia", municipio: "Distrito" }, "GeoNames (CC BY 4.0) con el ubigeo oficial del INEI",
-  { pais: "Perú", titulo: true, cod: (f) => f[8], nombre: (f) => f[7], prov: (f) => f[5], codCiudad: (c) => c[12], lugares: true,
+  { pais: "Perú", titulo: true, cod: (f) => f[8], nombre: (f) => f[7], prov: (f) => f[5], codCiudad: (c) => c[12], lugares: true, barrios: true,
     fila: (f) => { f[3] = DEP_PE[f[3]] || f[3]; return f; } });
 
 // Chile: regiones con su denominación oficial por código comunal, y la Región de
@@ -356,7 +367,7 @@ const REG_CL = { "01": "Región de Tarapacá", "02": "Región de Antofagasta", "
 const NUBLE = { "08401": "16101", "08402": "16102", "08403": "16202", "08404": "16203", "08405": "16302", "08406": "16103", "08407": "16104", "08408": "16204", "08409": "16303", "08410": "16105", "08411": "16106", "08412": "16205", "08413": "16107", "08414": "16201", "08415": "16206", "08416": "16301", "08417": "16304", "08418": "16108", "08419": "16305", "08420": "16207", "08421": "16109" };
 const PROV_NUBLE = { "161": "Diguillín", "162": "Itata", "163": "Punilla" };
 const chile = () => porCodigo("CL", { region: "Región", provincia: "Provincia", municipio: "Comuna" }, "GeoNames (CC BY 4.0) con el código comunal oficial (actualizado con la Región de Ñuble)",
-  { pais: "Chile", cod: (f) => f[8], nombre: (f) => f[7], prov: (f) => f[5].replace(/^Provincia de /, ""), codCiudad: (c) => NUBLE[c[12]] || c[12], notaCP: " · código postal general de la comuna",
+  { pais: "Chile", cod: (f) => f[8], nombre: (f) => f[7], prov: (f) => f[5].replace(/^Provincia de /, ""), codCiudad: (c) => NUBLE[c[12]] || c[12], barrios: true, notaCP: " · código postal general de la comuna",
     fila: (f) => {
       if (NUBLE[f[8]]) { f[8] = NUBLE[f[8]]; f[5] = PROV_NUBLE[f[8].slice(0, 3)]; if (f[8] === "16303") f[2] = f[7] = "Ñiquén"; }
       if (REG_CL[f[8].slice(0, 2)]) f[3] = REG_CL[f[8].slice(0, 2)];
