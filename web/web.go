@@ -142,7 +142,7 @@ func New(svc *Service, addr string) (*Server, error) {
 		ans.download(w, r)
 	})
 
-	handler := securityHeaders(mux)
+	handler := securityHeaders(utf8Body(mux))
 	ans.srv.Handler = handler
 
 	tmplsKeys := []string{
@@ -372,6 +372,8 @@ func (s *Server) scrape(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	newJob.normalizeText()
+
 	err = newJob.Validate()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
@@ -466,9 +468,9 @@ func (s *Server) download(w http.ResponseWriter, r *http.Request) {
 
 	fileName := filepath.Base(filePath)
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", fileName))
-	w.Header().Set("Content-Type", "text/csv")
+	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 
-	_, err = io.Copy(w, file)
+	_, err = io.Copy(w, withBOM(file))
 	if err != nil {
 		http.Error(w, "Failed to send file", http.StatusInternalServerError)
 		return
@@ -551,6 +553,8 @@ func (s *Server) apiScrape(w http.ResponseWriter, r *http.Request) {
 
 	// convert to seconds
 	newJob.Data.MaxTime *= time.Second
+
+	newJob.normalizeText()
 
 	err = newJob.Validate()
 	if err != nil {
@@ -703,7 +707,7 @@ func (s *Server) apiDeleteJob(w http.ResponseWriter, r *http.Request) {
 }
 
 func renderJSON(w http.ResponseWriter, code int, data any) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(code)
 
 	_ = json.NewEncoder(w).Encode(data)

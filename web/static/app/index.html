@@ -289,6 +289,8 @@ tbody tr.sel td { background: var(--accent-soft); }
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const icons = () => window.lucide && lucide.createIcons();
+// Minúsculas y sin tildes: «chamberi» encuentra «Chamberí» y «logrono», «Logroño».
+const plano = (s) => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 const fmtN = (n) => new Intl.NumberFormat("es").format(n);
 const fmtDate = (d) => new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(d));
 const fmtK = (n) => (n >= 1e6 ? (n / 1e6).toFixed(1).replace(".", ",") + " M" : n >= 1e4 ? (n / 1e3).toFixed(n >= 1e5 ? 0 : 1).replace(".", ",") + " mil" : fmtN(n));
@@ -957,7 +959,7 @@ function seccionRedes(l) {
 
 function filtrar() {
   const { leads, f } = S.res;
-  const q = f.q.trim().toLowerCase();
+  const q = plano(f.q.trim());
   let out = leads.filter((l) => {
     if (f.cat && l.category !== f.cat) return false;
     if (f.tel && !l.phone) return false;
@@ -971,7 +973,7 @@ function filtrar() {
     if (f.chat && !((techDe(l) || {}).chats || []).some((c) => c.kind !== "whatsapp")) return false;
     if (f.nochat) { const t = techDe(l); if (!t || t.status !== "ok" || (t.chats || []).some((c) => c.kind !== "whatsapp")) return false; }
     if (f.redes && !Object.keys(redesDe(l)).length) return false;
-    if (q && ![l.title, l.address, l.category, l.phone, l.website, (l.emails || []).join(" "), l.borough].join(" ").toLowerCase().includes(q)) return false;
+    if (q && !plano([l.title, l.address, l.category, l.phone, l.website, (l.emails || []).join(" "), l.borough].join(" ")).includes(q)) return false;
     return true;
   });
   const ord = { reviews: (a, b) => b.reviews - a.reviews, rating: (a, b) => b.rating - a.rating || b.reviews - a.reviews, nombre: (a, b) => a.title.localeCompare(b.title, "es"), seguidores: (a, b) => seguidores(b) - seguidores(a) || b.reviews - a.reviews };
