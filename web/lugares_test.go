@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -178,4 +179,28 @@ func TestLugaresMundo(t *testing.T) {
 	if m := primero(t, "US", "miami"); m.RadioKm < 4 || m.RadioKm > 15 || m.Zoom < 11 || m.Zoom > 14 {
 		t.Errorf("Miami: radio %v km, zoom %d", m.RadioKm, m.Zoom)
 	}
+}
+
+// normalizar se usa desde muchas peticiones a la vez: no debe fallar (antes compartía
+// un transformador y el servidor caía con «slice bounds out of range»).
+func TestNormalizarConcurrente(t *testing.T) {
+	var wg sync.WaitGroup
+
+	for i := 0; i < 64; i++ {
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			for j := 0; j < 300; j++ {
+				if got := normalizar("Peluquería Niño Chamberí, «Logroño» ÁÉÍÓÚ"); got != "peluqueria nino chamberi logrono aeiou" {
+					t.Errorf("normalizar = %q", got)
+
+					return
+				}
+			}
+		}()
+	}
+
+	wg.Wait()
 }

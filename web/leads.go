@@ -36,6 +36,7 @@ type Lead struct {
 	OrderOnline  []linkSource        `json:"order_online"`
 	Menu         string              `json:"menu"`
 	Claimed      bool                `json:"claimed"`
+	Grupo        string              `json:"grupo,omitempty"` // consulta que lo encontró (input_id): su competencia directa
 }
 
 type linkSource struct {
@@ -116,6 +117,7 @@ func parseLeads(r io.Reader) ([]Lead, error) {
 			Description: get(row, "descriptions"),
 			Link:        get(row, "link"),
 			Thumbnail:   get(row, "thumbnail"),
+			Grupo:       get(row, "input_id"),
 		}
 
 		lead.Rating, _ = strconv.ParseFloat(get(row, "review_rating"), 64)

@@ -86,11 +86,16 @@ var (
 	lugaresCat = map[string]*catLugares{}
 )
 
-var sinTildes = transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
+// Un transformador de texto no admite uso simultáneo: cada llamada toma el suyo
+// del pool (compartir uno hacía fallar el servidor con peticiones concurrentes).
+var sinTildes = sync.Pool{New: func() any { return transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC) }}
 
 // normalizar: minúsculas, sin tildes, signos como espacios. «Ñ» se conserva como «n».
 func normalizar(s string) string {
-	t, _, err := transform.String(sinTildes, s)
+	tr, _ := sinTildes.Get().(transform.Transformer)
+	t, _, err := transform.String(tr, s)
+	sinTildes.Put(tr)
+
 	if err != nil {
 		t = s
 	}

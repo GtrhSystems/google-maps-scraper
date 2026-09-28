@@ -20,12 +20,12 @@ import (
 // ---------------------------------------------------------------------------
 
 var (
-	reFacebook  = regexp.MustCompile(`(?i)https?://(?:www\.|m\.|web\.|es-la\.|es-es\.)?(?:facebook|fb)\.com/((?:profile\.php\?id=\d+)|(?:pages/[^"'\s<>?#]+/\d+)|[A-Za-z0-9.\-_%]{2,80})`)
-	reInstagram = regexp.MustCompile(`(?i)https?://(?:www\.)?instagram\.com/([A-Za-z0-9._]{2,30})`)
-	reTikTokURL = regexp.MustCompile(`(?i)https?://(?:www\.)?tiktok\.com/@([A-Za-z0-9._]{2,30})`)
-	reYouTube   = regexp.MustCompile(`(?i)https?://(?:www\.|m\.)?youtube\.com/((?:@[\w.\-]{2,60})|(?:channel/[\w-]{10,40})|(?:c/[\w.\-]{2,60})|(?:user/[\w.\-]{2,60}))`)
-	reLinkedURL = regexp.MustCompile(`(?i)https?://(?:[a-z]{2,3}\.)?linkedin\.com/(company|in|school)/([\w\-%.]{2,100})`)
-	reXURL      = regexp.MustCompile(`(?i)https?://(?:www\.)?(?:twitter|x)\.com/([A-Za-z0-9_]{1,15})(?:[/"'?#\s]|$)`)
+	reFacebook  = regexp.MustCompile(`(?i)(?:https?:)?//(?:www\.|m\.|web\.|es-la\.|es-es\.)?(?:facebook|fb)\.com/((?:profile\.php\?id=\d+)|(?:pages/[^"'\s<>?#]+/\d+)|[A-Za-z0-9.\-_%]{2,80})`)
+	reInstagram = regexp.MustCompile(`(?i)(?:https?:)?//(?:www\.)?instagram\.com/([A-Za-z0-9._]{2,30})`)
+	reTikTokURL = regexp.MustCompile(`(?i)(?:https?:)?//(?:www\.)?tiktok\.com/@([A-Za-z0-9._]{2,30})`)
+	reYouTube   = regexp.MustCompile(`(?i)(?:https?:)?//(?:www\.|m\.)?youtube\.com/((?:@[\w.\-]{2,60})|(?:channel/[\w-]{10,40})|(?:c/[\w.\-]{2,60})|(?:user/[\w.\-]{2,60}))`)
+	reLinkedURL = regexp.MustCompile(`(?i)(?:https?:)?//(?:[a-z]{2,3}\.)?linkedin\.com/(company|in|school)/([\w\-%.]{2,100})`)
+	reXURL      = regexp.MustCompile(`(?i)(?:https?:)?//(?:www\.)?(?:twitter|x)\.com/([A-Za-z0-9_]{1,15})(?:[/"'?#\s]|$)`)
 	reWhatsApp  = regexp.MustCompile(`(?i)(?:wa\.me/|api\.whatsapp\.com/send/?\?(?:[^"'\s]*&)?phone=|web\.whatsapp\.com/send\?phone=)\+?(\d{7,15})`)
 
 	fbReserved = map[string]bool{

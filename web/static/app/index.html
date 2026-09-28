@@ -11,6 +11,7 @@
 <script src="/static/app/lucide.min.js"></script>
 <script src="/static/app/brands.js"></script>
 <script src="/static/app/analitica.js"></script>
+<script src="/static/app/comparador.js"></script>
 <style>
 :root {
   --bg: #f5f7f9; --surface: #ffffff; --surface-2: #f0f3f6; --line: #e1e6eb; --line-strong: #cdd5dd;
@@ -206,6 +207,28 @@ tbody tr.sel td { background: var(--accent-soft); }
 [data-theme="dark"] img.logo-marca { background: #fff; padding: 1px; box-sizing: border-box; }
 .plat .logo-marca { width: 12px; height: 12px; margin-right: 4px; vertical-align: -2px; }
 #map { height: 620px; }
+
+/* ---------- comparador ---------- */
+.cmp { display: grid; grid-template-columns: 360px 1fr; gap: 16px; padding: 16px; align-items: start; }
+.cmp-cfg { display: grid; gap: 14px; position: sticky; top: 76px; }
+.cmp-blq { border: 1px solid var(--line); border-radius: var(--r); padding: 12px; }
+.cmp-blq h4 { margin: 0 0 8px; font-size: 13px; }
+.cmp-blq .ac { position: relative; }
+.cmp-fila { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
+.lbl-in { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); }
+.lbl-in select.field { height: 32px; width: auto; }
+.cmp-rivales { display: flex; flex-direction: column; gap: 6px; }
+.cmp-marca { display: grid; grid-template-columns: 96px 1fr; gap: 10px; align-items: start; }
+.cmp-logo { height: 72px; border: 1px solid var(--line); border-radius: var(--r); display: grid; place-items: center; padding: 6px; overflow: hidden; }
+.cmp-logo img { max-width: 100%; max-height: 100%; }
+.cmp-campos { display: grid; gap: 6px; }
+.cmp-campos input[type=color] { width: 34px; height: 26px; padding: 0; border: 1px solid var(--line-strong); border-radius: 4px; background: none; }
+.cmp-acc { display: grid; gap: 8px; }
+.cmp-inf { min-width: 0; }
+.cmp-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.cmp-bar .none { margin-right: auto; }
+#cmpFrame { width: 100%; min-height: 900px; border: 1px solid var(--line); border-radius: var(--r); background: #fff; }
+@media (max-width: 1100px) { .cmp { grid-template-columns: 1fr; } .cmp-cfg { position: static; } }
 
 /* ---------- selector de zonas (catálogo oficial) ---------- */
 .zona-row { display: flex; gap: 8px; position: relative; }
@@ -903,6 +926,7 @@ async function verResultados(id) {
         <button class="tab on" data-tab="lista"><i data-lucide="list"></i>Lista</button>
         <button class="tab" data-tab="mapa"><i data-lucide="map"></i>Mapa</button>
         <button class="tab" data-tab="analitica"><i data-lucide="chart-no-axes-combined"></i>Analítica</button>
+        <button class="tab" data-tab="comparador"><i data-lucide="scale"></i>Comparador</button>
       </div>
     </div>
     <div class="chips" id="chips">
@@ -1209,7 +1233,9 @@ function filtrar() {
 // Repinta tras llegar datos nuevos, sin mover el mapa ni borrar un filtro a medio escribir.
 function refrescarPanel() {
   const editando = document.activeElement && document.activeElement.closest(".an-filtros");
-  if (S.res.tab === "lista" || (S.res.tab === "analitica" && !editando)) pintarPanel();
+  // El comparador (informe completo) solo se repinta cuando terminan los análisis en curso.
+  const quieto = S.res.tech.status !== "running" && S.res.social.status !== "running";
+  if (S.res.tab === "lista" || (S.res.tab === "analitica" && !editando) || (S.res.tab === "comparador" && quieto && !(document.activeElement && document.activeElement.closest(".cmp-cfg")))) pintarPanel();
   else { pintarCount(filtrar().length, S.res.leads.length); pintarKpis(); }
 }
 
@@ -1220,6 +1246,7 @@ function pintarPanel() {
   pintarKpis();
   if (S.res.map) { S.res.map.remove(); S.res.map = null; }
   if (S.res.tab === "analitica") return pintarAnalitica();
+  if (S.res.tab === "comparador") return pintarComparador();
 
   if (!lista.length) {
     $("#panel").innerHTML = `<div class="empty"><div class="ico"><i data-lucide="filter-x"></i></div><h3>Ningún negocio cumple los filtros</h3><p>Quita alguno de los filtros de arriba.</p></div>`;

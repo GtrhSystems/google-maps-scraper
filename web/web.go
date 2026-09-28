@@ -138,6 +138,16 @@ func New(svc *Service, addr string) (*Server, error) {
 		ans.apiSocial(w, requestWithID(r))
 	})
 
+	mux.HandleFunc("POST /api/v1/jobs/{id}/comparador/iniciar", func(w http.ResponseWriter, r *http.Request) {
+		ans.apiComparadorIniciar(w, requestWithID(r))
+	})
+
+	mux.HandleFunc("POST /api/v1/jobs/{id}/comparador/datos", func(w http.ResponseWriter, r *http.Request) {
+		ans.apiComparadorDatos(w, requestWithID(r))
+	})
+
+	mux.HandleFunc("/api/v1/pdf", ans.apiPDF)
+
 	mux.HandleFunc("/api/v1/jobs/{id}/download", func(w http.ResponseWriter, r *http.Request) {
 		r = requestWithID(r)
 
