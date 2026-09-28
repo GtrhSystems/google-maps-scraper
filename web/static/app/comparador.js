@@ -494,61 +494,24 @@ function hojaDeRuta(mo, ac) {
   const acciones = [];
   const a = Object.fromEntries(ac.areas.map((x) => [x.k, x]));
   const objetivo = (x) => (x.lider ? `igualar a ${x.lider.nombre} (${Math.round(x.mejor)}/100 en ${minus(x.t)})` : "situarse por encima de la media");
-  const add = (h, area, t, kpi) => acciones.push({ h, area, t, kpi, s: a[area].s });
-  if (a.atencion.estado === "desventaja" || (yo.r.muestra && yo.r.pct_respuesta < 80)) add(0, "atencion", "Responder a todas las reseñas en menos de 48 horas, con un protocolo para las negativas", `Tasa de respuesta del ${pctTxt(yo.r.pct_respuesta || 0)} al 100 %`);
-  if (!yo.senales.whatsapp || !tieneAlguna(yo, ["chat", "agente_ia"])) add(0, "canales", "Activar WhatsApp Business y chat en la web para no perder ninguna consulta", "Responder cada consulta en menos de 5 minutos");
-  if (a.marketing.estado !== "ventaja" && (a.marketing.vals[0] ?? 0) < 75) add(0, "marketing", "Instalar la medición completa: Google Analytics 4, Tag Manager y píxeles de Meta y Google Ads", `Pasar de ${a.marketing.vals[0] ?? 0}/100 a ≥ 75/100 en medición`);
-  if (a.reputacion.estado !== "ventaja") add(1, "reputacion", "Programa sistemático de solicitud de reseñas a cada cliente satisfecho", `${objetivo(a.reputacion)}`);
-  if (a.web.estado !== "ventaja" && (a.web.vals[0] ?? 0) < 90) add(1, "web", "Mejorar la web: velocidad, SEO local, datos estructurados y adaptación a móvil", `Salud web de ${a.web.vals[0] ?? 0}/100 a ≥ 90/100`);
-  if (!yo.senales.reserva_online) add(1, "canales", "Reserva o cita online integrada en la web y en Google", "Reservas online activas en 30 días");
-  if (!(yo.w && (yo.w.precios || []).length)) add(1, "canales", "Publicar servicios con precios «desde» para reducir la fricción al comparar", "Página de servicios y precios publicada");
-  if (a.redes.estado !== "ventaja") add(1, "redes", "Calendario de contenidos: al menos 3 publicaciones a la semana en las redes con más público", `${objetivo(a.redes)}`);
-  if (!yo.senales.agente_ia) add(2, "canales", "Agente de IA que atienda, cualifique y reserve 24/7 por web y WhatsApp", "Atención 24/7 sin aumentar plantilla");
-  if (!tieneAlguna(yo, ["fidelizacion", "bonos", "regalo"])) add(2, "canales", "Programa de fidelización, bonos o tarjetas regalo para aumentar la recurrencia", "Clientes que repiten en 90 días");
-  if (a.marketing.estado !== "ventaja") add(2, "marketing", "Campañas de captación medidas (Google y Meta) con el público de la zona", "Coste por cliente conocido y decreciente");
-  add(2, "reputacion", "Repetir este análisis cada trimestre para medir el avance frente a la competencia", `Índice competitivo de ${ac.indices[0]} a ≥ ${Math.min(100, Math.max(...ac.indices) + 5)}`);
+  const add = (h, area, t, kpi, i = 2, e = 2) => acciones.push({ h, area, t, kpi, i, e, s: a[area].s });
+  if (a.atencion.estado === "desventaja" || (yo.r.muestra && yo.r.pct_respuesta < 80)) add(0, "atencion", "Responder a todas las reseñas en menos de 48 horas, con un protocolo para las negativas", `Tasa de respuesta del ${pctTxt(yo.r.pct_respuesta || 0)} al 100 %`, 3, 1);
+  if (!yo.senales.whatsapp || !tieneAlguna(yo, ["chat", "agente_ia"])) add(0, "canales", "Activar WhatsApp Business y chat en la web para no perder ninguna consulta", "Responder cada consulta en menos de 5 minutos", 3, 1);
+  if (a.marketing.estado !== "ventaja" && (a.marketing.vals[0] ?? 0) < 75) add(0, "marketing", "Instalar la medición completa: Google Analytics 4, Tag Manager y píxeles de Meta y Google Ads", `Pasar de ${a.marketing.vals[0] ?? 0}/100 a ≥ 75/100 en medición`, 2, 1);
+  if (a.reputacion.estado !== "ventaja") add(1, "reputacion", "Programa sistemático de solicitud de reseñas a cada cliente satisfecho", `${objetivo(a.reputacion)}`, 3, 2);
+  if (a.web.estado !== "ventaja" && (a.web.vals[0] ?? 0) < 90) add(1, "web", "Mejorar la web: velocidad, SEO local, datos estructurados y adaptación a móvil", `Salud web de ${a.web.vals[0] ?? 0}/100 a ≥ 90/100`, 2, 2);
+  if (!yo.senales.reserva_online) add(1, "canales", "Reserva o cita online integrada en la web y en Google", "Reservas online activas en 30 días", 3, 2);
+  if (!(yo.w && (yo.w.precios || []).length)) add(1, "canales", "Publicar servicios con precios «desde» para reducir la fricción al comparar", "Página de servicios y precios publicada", 2, 1);
+  if (a.redes.estado !== "ventaja") add(1, "redes", "Calendario de contenidos: al menos 3 publicaciones a la semana en las redes con más público", `${objetivo(a.redes)}`, 2, 2);
+  if (!yo.senales.agente_ia) add(2, "canales", "Agente de IA que atienda, cualifique y reserve 24/7 por web y WhatsApp", "Atención 24/7 sin aumentar plantilla", 3, 3);
+  if (!tieneAlguna(yo, ["fidelizacion", "bonos", "regalo"])) add(2, "canales", "Programa de fidelización, bonos o tarjetas regalo para aumentar la recurrencia", "Clientes que repiten en 90 días", 2, 2);
+  if (a.marketing.estado !== "ventaja") add(2, "marketing", "Campañas de captación medidas (Google y Meta) con el público de la zona", "Coste por cliente conocido y decreciente", 3, 3);
+  add(2, "reputacion", "Repetir este análisis cada trimestre para medir el avance frente a la competencia", `Índice competitivo de ${ac.indices[0]} a ≥ ${Math.min(100, Math.max(...ac.indices) + 5)}`, 1, 1);
   return acciones;
 }
 
 const colorEstado = { ventaja: "var(--ok)", "a la par": "#b45309", desventaja: "var(--mal)", "sin datos": "#94a3b8" };
 const textoEstado = { ventaja: "▲ Ventaja", "a la par": "● A la par", desventaja: "▼ Desventaja", "sin datos": "— Sin datos" };
-
-// Mapa de brechas: por área, rango de la competencia, su media y tu posición (0-100).
-function svgBrechas(mo, ac) {
-  const W = 700, izq = 190, der = 110, fila = 46, H = ac.areas.length * fila + 40, x = (v) => izq + (v / 100) * (W - izq - der);
-  const eje = [0, 25, 50, 75, 100].map((v) => `<line x1="${x(v)}" x2="${x(v)}" y1="10" y2="${H - 26}" stroke="#e2e8f0"/><text x="${x(v)}" y="${H - 10}" text-anchor="middle" class="ax">${v}</text>`).join("");
-  const filas = ac.areas.map((a, i) => {
-    const y = 26 + i * fila, riv = a.vals.slice(1).filter((v) => v != null), yo = a.vals[0];
-    const rango = riv.length ? `<line x1="${x(Math.min(...riv))}" x2="${x(Math.max(...riv))}" y1="${y}" y2="${y}" stroke="#cbd5e1" stroke-width="8" stroke-linecap="round"/>` : "";
-    const puntos = riv.map((v) => `<circle cx="${x(v)}" cy="${y}" r="4.5" fill="#94a3b8" stroke="#fff" stroke-width="2"/>`).join("");
-    const media = a.media != null ? `<line x1="${x(a.media)}" x2="${x(a.media)}" y1="${y - 11}" y2="${y + 11}" stroke="#475569" stroke-width="2"/>` : "";
-    const mio = yo != null ? `<circle cx="${x(yo)}" cy="${y}" r="8" fill="var(--m1)" stroke="#fff" stroke-width="2.5"><title>Tu empresa: ${yo}/100</title></circle><text x="${x(yo)}" y="${y - 14}" text-anchor="middle" class="vy">${yo}</text>` : `<text x="${izq}" y="${y + 4}" class="ax">sin datos</text>`;
-    return `<text x="${izq - 12}" y="${y + 4}" text-anchor="end" class="lb">${eH(a.t)}</text>${rango}${puntos}${media}${mio}
-      <text x="${W - der + 14}" y="${y + 4}" class="est" fill="${colorEstado[a.estado]}">${textoEstado[a.estado]}</text>`;
-  }).join("");
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Mapa de brechas por área">${eje}${filas}</svg>
-    <div class="ley"><span><i class="c yo"></i>Tu empresa</span><span><i class="c riv"></i>Cada competidor</span><span><i class="r"></i>Rango de la competencia</span><span><i class="m"></i>Media de la competencia</span></div>`;
-}
-
-// Ranking del índice competitivo (0-100).
-function svgRanking(mo, ac) {
-  const orden = mo.ns.map((n, i) => ({ n, v: ac.indices[i] })).sort((a, b) => b.v - a.v);
-  const W = 700, izq = 270, fila = 34, H = orden.length * fila + 8;
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Ranking del índice competitivo">${orden.map((o, i) => {
-    const y = i * fila + 6, w = Math.max(3, (o.v / 100) * (W - izq - 70));
-    const nom = o.n.nombre.length > 32 ? o.n.nombre.slice(0, 31) + "…" : o.n.nombre;
-    return `<text x="8" y="${y + 17}" class="pos">${i + 1}º</text><text x="${izq - 10}" y="${y + 17}" text-anchor="end" class="lb${o.n.esMia ? " yo" : ""}">${eH(nom)}</text>
-      <path d="M${izq} ${y + 5}h${w - 4}a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4h-${w - 4}z" fill="${o.n.esMia ? "var(--m1)" : "#94a3b8"}"/><text x="${izq + w + 8}" y="${y + 18}" class="vy">${o.v}</text>`;
-  }).join("")}</svg>`;
-}
-
-// Diagrama de flujo del recorrido del cliente (HTML: el texto se ajusta a cada caja).
-function flujoRecorrido(etapas) {
-  const cls = { ventaja: "ok", "a la par": "par", desventaja: "mal", "sin datos": "nd" };
-  return `<div class="flujo">${etapas.map((e, i) => `<div class="paso ${cls[e.estado]}">
-      <div class="pn">${i + 1}</div><b>${eH(e.t)}</b><span class="ps">${eH(e.sub)}</span>
-      <span class="pe">${textoEstado[e.estado]}</span><p>${eH(e.extra)}</p></div>${i < etapas.length - 1 ? '<div class="flecha">➜</div>' : ""}`).join("")}</div>`;
-}
 
 // Ciclo de mejora continua.
 function svgCiclo() {
@@ -567,6 +530,186 @@ function svgCiclo() {
   return `<svg viewBox="80 20 360 330" width="100%" role="img" aria-label="Ciclo de mejora continua"><defs><marker id="fl" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--m2)"/></marker></defs>${arco}${nodos}<text x="${cx}" y="${cy - 2}" text-anchor="middle" class="cc">Mejora</text><text x="${cx}" y="${cy + 16}" text-anchor="middle" class="cc">continua</text></svg>`;
 }
 
+/* ================= piezas visuales del informe ejecutivo ================= */
+// Icono de Lucide incrustado como SVG (el informe no ejecuta JavaScript en el PDF).
+function icoSVG(nombre, tam = 18, cls = "ic") {
+  try {
+    const k = nombre.split("-").map((p) => p[0].toUpperCase() + p.slice(1)).join("");
+    const el = lucide.createElement(lucide.icons[k]);
+    el.setAttribute("width", tam); el.setAttribute("height", tam); el.setAttribute("class", cls);
+    return el.outerHTML;
+  } catch (e) { return ""; }
+}
+
+// Logotipo oficial vectorial de una marca (WhatsApp, Google, Meta, Instagram…) del catálogo de marcas.
+function marcaSVG(nombre, tam = 16) {
+  const k = claveMarca(nombre);
+  const m = k && MARCAS[k];
+  if (!m || !m.d) return "";
+  const fill = k === "instagram" ? "#E4405F" : m.c === "currentColor" ? "#111827" : m.c;
+  return `<svg class="bi" width="${tam}" height="${tam}" viewBox="${m.vb}" role="img" aria-label="${eH(m.t)}"><path fill="${fill}" d="${m.d}"/></svg>`;
+}
+
+// Logotipo oficial de cada negocio (detectado en su web) o, si no hay, sus iniciales.
+function avatar(n, tam = 40) {
+  const logo = n.esMia ? marcaEfectiva().logo : n.w && n.w.marca && n.w.marca.logo;
+  const tono = n.esMia ? marcaEfectiva().tono : n.w && n.w.marca && n.w.marca.tono;
+  if (logo) return `<span class="av" style="width:${tam * 2.2}px;height:${tam}px;background:${tono === "claro" ? "#1f2937" : "#fff"}"><img src="${logo}" alt="${eH(n.nombre)}"></span>`;
+  const ini = n.nombre.replace(/[^\p{L}\p{N} ]/gu, "").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+  return `<span class="av ini${n.esMia ? " yo" : ""}" style="width:${tam}px;height:${tam}px;font-size:${Math.round(tam * 0.38)}px">${eH(ini)}</span>`;
+}
+
+const ICONO_AREA = { reputacion: "star", atencion: "messages-square", web: "globe", marketing: "target", redes: "share-2", canales: "shopping-cart" };
+const QUE_MIDE = {
+  reputacion: "Cuántas reseñas tienes y qué nota te ven los clientes en Google Maps.",
+  atencion: "Si respondes a tus clientes y cuántos quedan insatisfechos.",
+  web: "Si tu web carga rápido, se ve bien en el móvil y Google la entiende.",
+  marketing: "Si mides tus visitas y puedes hacer publicidad a quien ya te conoce.",
+  redes: "Presencia, audiencia y actividad en redes sociales.",
+  canales: "Cuántas formas tiene un cliente de contactarte, reservar y comprar.",
+};
+// Icono de cada facilidad del modelo de trabajo: marca oficial si existe, si no un icono genérico.
+const ICONO_SENAL = { whatsapp: ["WhatsApp"], reserva_online: [null, "calendar-check"], pago_online: [null, "credit-card"], tienda_online: [null, "shopping-bag"], chat: [null, "messages-square"], agente_ia: [null, "bot"],
+  delivery: [null, "truck"], domicilio: [null, "house"], financiacion: [null, "wallet"], primera_gratis: [null, "gift"], presupuesto: [null, "file-text"], urgencias: [null, "siren"], seguros: [null, "shield-check"],
+  garantia: [null, "badge-check"], fidelizacion: [null, "heart-handshake"], bonos: [null, "package"], promociones: [null, "percent"], regalo: [null, "gift"], idiomas: [null, "languages"], formacion: [null, "graduation-cap"],
+  sostenibilidad: [null, "leaf"], testimonios: [null, "quote"], equipo: [null, "users"], certificaciones: [null, "award"], blog: [null, "newspaper"], newsletter: [null, "mail"], accesibilidad: [null, "accessibility"] };
+const iconoSenal = (k) => { const [m, i] = ICONO_SENAL[k] || [null, "check"]; return (m && marcaSVG(m, 15)) || icoSVG(i, 15); };
+
+// Termómetro: escala 0-100 con tu nivel, la media y el líder.
+function termometro(yo, media, lider, liderNombre) {
+  const pos = (v) => `${Math.max(0, Math.min(100, v))}%`;
+  const lado = (v) => (v > 78 ? " dr" : v < 22 ? " iz" : "");
+  return `<div class="termo">
+    <div class="tt"><i style="width:${pos(yo)}"></i>
+      <span class="mk med${lado(media)}" style="left:${pos(media)}"><b>${media}</b><em>Media de tu competencia</em></span>
+      <span class="mk lid${lado(lider)}" style="left:${pos(lider)}"><b>${lider}</b><em>Líder: ${eH(liderNombre)}</em></span>
+      <span class="mk tu" style="left:${pos(yo)}"><b>${yo}</b><em>Tú</em></span></div>
+    <div class="esc"><span>0 · Nada implantado</span><span>50</span><span>100 · Excelente</span></div></div>`;
+}
+
+// Barras «Tú / Media / Líder» de un área, con nombres completos.
+function barrasArea(a) {
+  const fila = (t, v, cls, extra = "") => `<div class="ba ${cls}"><span class="bl">${t}${extra}</span><span class="bt"><i style="width:${v == null ? 0 : Math.max(1, v)}%"></i></span><b>${v == null ? "—" : Math.round(v)}</b></div>`;
+  return fila("Tú", a.vals[0], "tu") + fila("Media competencia", a.media == null ? null : Math.round(a.media), "me") + fila("Líder", a.mejor, "li", a.lider ? `<small>${eH(a.lider.nombre)}</small>` : "");
+}
+
+// Mapa mental: tu empresa en el centro y las seis áreas alrededor con su hallazgo principal.
+function mapaMental(mo, ac) {
+  const W = 740, H = 460, cx = W / 2, cy = H / 2;
+  const pos = [[20, 20], [20, 175], [20, 330], [520, 20], [520, 175], [520, 330]];
+  const lineas = ac.areas.map((a, i) => { const [x, y] = pos[i]; const px = x < cx ? x + 200 : x; return `<path d="M${cx} ${cy} C ${(cx + px) / 2} ${cy}, ${(cx + px) / 2} ${y + 55}, ${px} ${y + 55}" fill="none" stroke="${colorEstado[a.estado]}" stroke-width="2.5"/>`; }).join("");
+  const nodos = ac.areas.map((a, i) => {
+    const [x, y] = pos[i];
+    const clave = a.estado === "ventaja" ? `Lideras con ${a.vals[0]} puntos` : a.vals[0] == null ? "Sin datos suficientes" : a.brecha > 0 ? `Te faltan ${a.brecha} puntos para igualar al líder` : "Al nivel del mejor";
+    const margen = a.vals[0] != null ? `Margen de mejora hasta 100: +${100 - a.vals[0]}` : "";
+    return `<div class="mm-n" style="left:${x}px;top:${y}px;border-color:${colorEstado[a.estado]}"><div class="mm-h">${icoSVG(ICONO_AREA[a.k], 16)}<b>${eH(a.t)}</b></div><span class="mm-e" style="color:${colorEstado[a.estado]}">${textoEstado[a.estado]}</span><p>${eH(clave)}</p><p class="mm-m">${eH(margen)}</p></div>`;
+  }).join("");
+  return `<div class="mm" style="width:${W}px;height:${H}px"><svg width="${W}" height="${H}">${lineas}</svg>${nodos}
+    <div class="mm-c">${avatar(mo.ns[0], 34)}<b>${eH(mo.ns[0].nombre)}</b><span>Índice ${ac.indices[0]}/100</span></div></div>`;
+}
+
+// Matriz impacto-esfuerzo: dónde están los márgenes de oportunidad más fáciles.
+function matrizOportunidad(ruta) {
+  const cuad = [["Resultados rápidos", "Alto impacto · poco esfuerzo", (x) => x.i >= 2 && x.e <= 1, "ok"], ["Proyectos estratégicos", "Alto impacto · más esfuerzo", (x) => x.i >= 2 && x.e >= 2, "m1"],
+    ["Complementos", "Menor impacto · poco esfuerzo", (x) => x.i <= 1 && x.e <= 1, "par"], ["Para más adelante", "Menor impacto · más esfuerzo", (x) => x.i <= 1 && x.e >= 2, "nd"]];
+  return `<div class="mx"><div class="mx-y">IMPACTO ↑</div><div class="mx-g">${cuad.map(([t, sub, f, cls]) => `<div class="mx-c ${cls}"><b>${t}</b><em>${sub}</em><ol>${ruta.map((x, i) => ({ x, i })).filter(({ x }) => f(x)).map(({ x, i }) => `<li value="${i + 1}">${eH(x.t)}</li>`).join("") || "<p class=\"nd\">Ninguna acción en este cuadrante.</p>"}</ol></div>`).join("")}</div><div class="mx-x">ESFUERZO →</div></div>`;
+}
+
+function bloqueEjecutivo({ mo, ac, etapas, ruta, dg, costes, yo, rv, mc, liderIdx, brechaLider, mediaRiv, enDesv, enVent, lista }) {
+  const alerta = enDesv.length >= 2 || brechaLider >= 15;
+  const pasos = [["activity", "Situación", "Dónde estás hoy"], ["git-compare", "Competencia", "Frente a quién"], ["layers", "Brechas", "En qué te superan"], ["lightbulb", "Oportunidades", "Qué puedes ganar"], ["route", "Plan", "Cómo cerrar la brecha"]];
+  const fuerte = (i) => { const vs = ac.areas.map((a) => ({ a, v: a.vals[i] })).filter((x) => x.v != null).sort((x, y) => y.v - x.v); return vs[0] ? vs[0].a : null; };
+  const debil = (i) => { const vs = ac.areas.map((a) => ({ a, v: a.vals[i] })).filter((x) => x.v != null).sort((x, y) => x.v - y.v); return vs[0] ? vs[0].a : null; };
+  const estrellas = (r) => (r ? `<span class="stars">${"★".repeat(Math.round(r))}<span>${"★".repeat(5 - Math.round(r))}</span></span> ${num1(r)}` : "Sin valoración");
+  const orden = mo.ns.map((n, i) => ({ n, i, v: ac.indices[i] })).sort((a, b) => b.v - a.v);
+  const iconoEtapa = ["search", "shield-check", "phone-call", "circle-check-big", "repeat"];
+  return `
+  <div class="blq">
+    <div class="leer">${pasos.map(([ic, t, d], i) => `<div>${icoSVG(ic, 22)}<b>${i + 1}. ${t}</b><span>${d}</span></div>${i < pasos.length - 1 ? '<i class="fl">➜</i>' : ""}`).join("")}</div>
+    <h2>La situación en un minuto<small>Índice competitivo de 0 a 100: la media de seis áreas que deciden si un cliente te elige a ti o a tu competencia</small></h2>
+    <div class="sit">
+      <div class="big"><span>Tu índice competitivo</span><b>${ac.indices[0]}<small>/100</small></b><em>${brechaLider > 0 ? `${brechaLider} puntos por debajo del líder` : "Encabezas a tu competencia"}</em></div>
+      <div class="sit-d">
+        <div class="msj ${alerta ? "alerta" : "ok"}">${icoSVG(alerta ? "triangle-alert" : "circle-check", 20)}<div><b>${alerta ? "Hoy compites en desventaja." : enDesv.length ? "Compites de igual a igual, con puntos débiles concretos." : "Hoy compites con ventaja: el reto es mantenerla."}</b>
+          ${enDesv.length ? `Tu competencia te supera en <b>${enDesv.length} de ${ac.areas.length}</b> áreas: ${enDesv.map((a) => minus(a.t)).join(", ")}.` : "La competencia no se detiene: conviene repetir este análisis cada trimestre."}</div></div>
+        ${termometro(ac.indices[0], mediaRiv, liderIdx.v, liderIdx.n.nombre)}
+      </div>
+    </div>
+    <div class="mini4">
+      <div>${icoSVG("trophy", 20)}<b>#${yo.posicion}</b><span>de ${mo.totalMercado} negocios en tu mercado</span></div>
+      <div>${icoSVG("trending-down", 20)}<b>${enDesv.length} de ${ac.areas.length}</b><span>áreas en desventaja</span></div>
+      <div>${icoSVG("trending-up", 20)}<b>${enVent.length} de ${ac.areas.length}</b><span>áreas con ventaja</span></div>
+      <div>${marcaSVG("Google Maps", 20)}<b>${num1(yo.l.rating || 0)} ★ · ${fmtN(yo.l.reviews || 0)}</b><span>tu valoración y reseñas en Google</span></div>
+    </div>
+  </div>
+
+  <div class="blq salto">
+    <h2>Tu competencia, cara a cara<small>Los negocios con los que te comparas, con su logotipo y nombre oficiales</small></h2>
+    <div class="caras">${mo.ns.map((n, i) => { const f = fuerte(i), d = debil(i); return `<div class="cara${n.esMia ? " yo" : ""}">
+      <div class="cara-h">${avatar(n, 36)}<div><b>${eH(n.nombre)}</b><span>${n.esMia ? "Tu empresa" : `#${n.posicion} del mercado`} · ${eH(n.l.category || "")}</span></div></div>
+      <div class="cara-i"><span>Índice competitivo</span><div class="mt"><i style="width:${ac.indices[i]}%"></i></div><b>${ac.indices[i]}</b></div>
+      <div class="cara-d"><span>${marcaSVG("Google Maps", 13)} ${estrellas(n.l.rating)} · ${fmtN(n.l.reviews || 0)} reseñas</span>
+        ${f ? `<span class="pf">${icoSVG("thumbs-up", 13)} Su punto fuerte: <b>${eH(minus(f.t))}</b></span>` : ""}
+        ${d ? `<span class="pd">${icoSVG("thumbs-down", 13)} Su punto débil: <b>${eH(minus(d.t))}</b></span>` : ""}</div></div>`; }).join("")}</div>
+    <h2>Ranking competitivo<small>Índice de cada negocio: tu empresa en tu color de marca</small></h2>
+    <div class="rank">${orden.map((o, k) => `<div class="rk${o.n.esMia ? " yo" : ""}"><span class="rp">${k + 1}º</span>${avatar(o.n, 26)}<span class="rn">${eH(o.n.nombre)}</span><span class="rb"><i style="width:${o.v}%"></i></span><b>${o.v}</b></div>`).join("")}</div>
+  </div>
+
+  <div class="blq salto">
+    <h2>Las seis áreas que deciden<small>Qué mide cada una, cómo estás frente a la media y al líder, y tu margen de oportunidad</small></h2>
+    <div class="areas">${ac.areas.map((a) => `<div class="area ${{ ventaja: "ok", "a la par": "par", desventaja: "mal", "sin datos": "nd" }[a.estado]}">
+      <div class="area-h"><span class="area-i">${icoSVG(ICONO_AREA[a.k], 20)}</span><div><b>${eH(a.t)}</b><span>${eH(QUE_MIDE[a.k])}</span></div><span class="area-e">${textoEstado[a.estado]}</span></div>
+      ${barrasArea(a)}
+      <p class="area-o">${a.vals[0] == null ? "Sin datos suficientes para esta área." : a.brecha > 0 ? `${icoSVG("target", 14)} <b>Oportunidad: +${a.brecha} puntos</b> para igualar al líder${a.lider ? ` (${eH(a.lider.nombre)})` : ""}.` : `${icoSVG("award", 14)} <b>Eres el referente</b> de tu grupo en esta área.`}</p></div>`).join("")}</div>
+  </div>
+
+  <div class="blq salto">
+    <h2>Mapa mental de tu posición<small>Tu empresa en el centro; cada rama es un área, con su estado y la oportunidad que abre</small></h2>
+    <div class="mm-w">${mapaMental(mo, ac)}</div>
+    <div class="ley2"><span><i style="background:var(--ok)"></i>Ventaja</span><span><i style="background:#b45309"></i>A la par</span><span><i style="background:var(--mal)"></i>Desventaja</span></div>
+  </div>
+
+  <div class="blq salto">
+    <h2>El recorrido de tu cliente<small>Las cinco etapas antes de comprarte: dónde lo ganas y dónde lo pierdes frente a tu competencia</small></h2>
+    <div class="flujo">${etapas.map((e, i) => `<div class="paso ${{ ventaja: "ok", "a la par": "par", desventaja: "mal", "sin datos": "nd" }[e.estado]}">
+      <div class="pn">${icoSVG(iconoEtapa[i], 20)}</div><b>${i + 1}. ${eH(e.t)}</b><span class="ps">${eH(e.sub)}</span><span class="pe">${textoEstado[e.estado]}</span><p>${eH(e.extra)}</p></div>${i < etapas.length - 1 ? '<div class="flecha">➜</div>' : ""}`).join("")}</div>
+    <h2>El coste de no actuar<small>Lo que ya hace tu competencia y hoy tú no</small></h2>
+    <div class="costes">${costes.length ? costes.map((c) => `<div class="coste"><b>${eH(c.cifra)}</b><span>${eH(c.texto)}</span></div>`).join("") : `<p class="nd">No se detectan ventajas de tu competencia sobre ti en los datos disponibles.</p>`}</div>
+  </div>
+
+  <div class="blq salto">
+    <h2>Lo bueno, lo a mejorar y lo a innovar</h2>
+    <div class="diag">
+      <div class="card b"><h3>${icoSVG("thumbs-up", 18)} Lo bueno</h3>${lista(dg.bueno.slice(0, 3), "Todavía no destacas claramente en ningún indicador.")}</div>
+      <div class="card m"><h3>${icoSVG("wrench", 18)} A mejorar</h3>${lista(dg.mejorar.slice(0, 3), "No hay diferencias significativas en tu contra.")}</div>
+      <div class="card i"><h3>${icoSVG("lightbulb", 18)} A innovar</h3>${lista(dg.innovar.slice(0, 3), "Sin oportunidades claras en los datos disponibles.")}</div>
+    </div>
+  </div>
+
+  <div class="blq">
+    <h2>Dónde está la oportunidad<small>Cada acción de la hoja de ruta según su impacto y el esfuerzo que requiere (los números son los de la hoja de ruta)</small></h2>
+    ${matrizOportunidad(ruta)}
+  </div>
+
+  <div class="blq salto">
+    <h2>Hoja de ruta de mejora<small>Acciones priorizadas, con su objetivo medible y el área de trabajo que las resuelve</small></h2>
+    <div class="ruta">${["0 – 30 días · Resultados rápidos", "30 – 90 días · Consolidar", "90 – 180 días · Escalar"].map((h, k) => `<div class="hz"><div class="hzt"><b>${k + 1}</b>${eH(h)}</div>${ruta.map((x, i) => ({ x, i })).filter(({ x }) => x.h === k).map(({ x, i }) => `<div class="acc"><span class="an">${i + 1}</span><b>${eH(x.t)}</b><span class="kp">${icoSVG("target", 12)} ${eH(x.kpi)}</span><span class="sv">${eH(x.s)}</span></div>`).join("") || `<p class="nd">Sin acciones en este horizonte.</p>`}</div>`).join("")}</div>
+  </div>
+
+  <div class="blq salto">
+    <h2>Por qué mejorar no es opcional<small>La competencia se mide y se mueve cada mes</small></h2>
+    <div class="porque">
+      <div>${svgCiclo()}</div>
+      <div>
+        <p>Los negocios que lideran tu mercado no lo hacen por una acción puntual, sino porque <b>miden, comparan y mejoran de forma continua</b> su reputación, su web, su atención y sus canales de venta.</p>
+        <p>Ese trabajo no es un servicio externo ni un extra: es parte de la gestión de cualquier negocio, del autónomo a la gran empresa, que quiera <b>seguir mejorando, mantenerse y escalar</b>.</p>
+        <ul class="lineas">${[...new Set(ruta.map((x) => x.s))].map((s) => `<li>${eH(s)}</li>`).join("")}</ul>
+        ${mc.por ? `<p class="firma">Preparado por <b>${eH(mc.por)}</b>, tu equipo para ejecutar y medir este plan.</p>` : ""}
+      </div>
+    </div>
+  </div>`;
+}
+
 /* ================= informe HTML autónomo ================= */
 const eH = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
@@ -575,21 +718,12 @@ function nombreInforme() {
   return `Análisis competitivo - ${m.nombre || "empresa"} - ${new Date().toISOString().slice(0, 10)}`;
 }
 
-// Barras horizontales por negocio: la empresa en el color de marca, la competencia en gris.
+// Barras por negocio con su nombre completo: tu empresa en el color de marca, la competencia en gris.
 function barrasSVG(mo, mt, vals) {
-  const con = vals.map((v, i) => ({ v, n: mo.ns[i] })).filter((x) => x.v != null);
+  const con = vals.filter((v) => v != null);
   if (!con.length) return `<p class="nd">Sin datos para comparar.</p>`;
-  const max = Math.max(...con.map((x) => x.v), mt.alto ? 0 : 1) || 1;
-  const fila = 26, anch = 440, eti = 170;
-  const alto = mo.ns.length * fila + 4;
-  const filas = mo.ns.map((n, i) => {
-    const v = vals[i], y = i * fila + 4, w = v == null ? 0 : Math.max(2, (v / max) * (anch - eti - 70));
-    const color = n.esMia ? "var(--m1)" : ["#64748b", "#94a3b8", "#a8b3c2", "#cbd5e1"][Math.min(3, i - 1)];
-    const nom = n.nombre.length > 26 ? n.nombre.slice(0, 25) + "…" : n.nombre;
-    return `<text x="${eti - 8}" y="${y + 14}" text-anchor="end" class="svl${n.esMia ? " yo" : ""}">${eH(nom)}</text>
-      ${v == null ? `<text x="${eti}" y="${y + 14}" class="svn">sin datos</text>` : `<path d="M${eti} ${y + 3}h${w - 4}a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4h-${w - 4}z" fill="${color}"><title>${eH(n.nombre)}: ${eH(mt.fmt(v))}</title></path><text x="${eti + w + 6}" y="${y + 14}" class="svv">${eH(mt.fmt(v))}</text>`}`;
-  }).join("");
-  return `<svg viewBox="0 0 ${anch} ${alto}" width="100%" role="img" aria-label="${eH(mt.t)}">${filas}</svg>`;
+  const max = Math.max(...con) || 1;
+  return `<div class="rank">${mo.ns.map((n, i) => `<div class="rk${n.esMia ? " yo" : ""}" style="grid-template-columns:auto minmax(120px,1fr) 1.3fr 64px">${avatar(n, 20)}<span class="rn">${eH(n.nombre)}</span><span class="rb"><i style="width:${vals[i] == null ? 0 : Math.max(2, (vals[i] / max) * 100)}%"></i></span><b>${vals[i] == null ? "—" : eH(mt.fmt(vals[i]))}</b></div>`).join("")}</div>`;
 }
 
 function informeHTML(mo) {
@@ -601,7 +735,7 @@ function informeHTML(mo) {
   const est = { lidera: ["▲ Lidera", "ok"], "a la par": ["● A la par", "neu"], "por detrás": ["▼ Por detrás", "mal"], "último": ["▼ Último", "mal"], "sin datos": ["— Sin datos", "nd"] };
   const cuenta = (e) => filas.filter((f) => f.estado === e).length;
   const logoHTML = mc.logo ? `<div class="logo${mc.tono === "claro" ? " sobre" : ""}"><img src="${mc.logo}" alt="${eH(mc.nombre)}"></div>` : "";
-  const cols = mo.ns.map((n) => `<th class="${n.esMia ? "yo" : ""}">${eH(n.nombre)}${n.esMia ? "<small>Tu empresa</small>" : `<small>#${n.posicion} del mercado</small>`}</th>`).join("");
+  const cols = mo.ns.map((n) => `<th class="${n.esMia ? "yo" : ""}">${avatar(n, 22)}<br>${eH(n.nombre)}${n.esMia ? "<small>Tu empresa</small>" : `<small>#${n.posicion} del mercado</small>`}</th>`).join("");
   const celda = (f, i) => {
     const v = f.vals[i];
     if (v == null) return `<td class="nd">—</td>`;
@@ -625,7 +759,7 @@ function informeHTML(mo) {
     const nombresS = { ...mo.d.senales, chat: "Chat en la web", agente_ia: "Agente IA en la web" };
     const ks = Object.keys(nombresS).filter((k) => mo.ns.some((n) => n.senales[k]));
     if (!ks.length) return `<p class="nd">No se detectaron herramientas ni facilidades publicadas.</p>`;
-    return `<table class="tb"><thead><tr><th>Facilidad o herramienta</th>${cols}</tr></thead><tbody>${ks.map((k) => `<tr><td>${eH(nombresS[k])}</td>${mo.ns.map((n) => `<td class="${n.senales[k] ? "si" : "no"}${n.esMia ? " yo" : ""}" title="${eH(n.senales[k] || "")}">${n.senales[k] ? "✓ Sí" : "✗ No"}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+    return `<table class="tb"><thead><tr><th>Facilidad o herramienta</th>${cols}</tr></thead><tbody>${ks.map((k) => `<tr><td>${iconoSenal(k)} ${eH(nombresS[k])}</td>${mo.ns.map((n) => `<td class="${n.senales[k] ? "si" : "no"}${n.esMia ? " yo" : ""}" title="${eH(n.senales[k] || "")}">${n.senales[k] ? "✓ Sí" : "✗ No"}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
   };
   const serviciosTabla = () => {
     const union = [];
@@ -647,7 +781,7 @@ function informeHTML(mo) {
       ${r.cita_peor ? `<blockquote class="q mal">«${eH(r.cita_peor)}»</blockquote>` : ""}
       <p class="mini">Naturalidad de las reseñas: <b>${eH(r.autenticidad.nivel || "sin datos")}</b>${r.autenticidad.pct_cinco != null ? ` · ${pctTxt(r.autenticidad.pct_cinco)} de 5 ★ · ${r.autenticidad.duplicadas || 0} textos repetidos` : ""}</p>` : `<p class="nd">Sin reseñas con texto disponibles.</p>`}</div>`;
   }).join("");
-  const redesTabla = `<table class="tb"><thead><tr><th>Red</th>${cols}</tr></thead><tbody>${["facebook", "instagram", "tiktok", "youtube", "linkedin", "x"].map((k) => `<tr><td>${eH(REDES[k][1])}</td>${mo.ns.map((n) => {
+  const redesTabla = `<table class="tb"><thead><tr><th>Red</th>${cols}</tr></thead><tbody>${["facebook", "instagram", "tiktok", "youtube", "linkedin", "x"].map((k) => `<tr><td>${marcaSVG(k, 15)} ${eH(REDES[k][1])}</td>${mo.ns.map((n) => {
     const x = n.m.redes[k];
     if (!x) return `<td class="no${n.esMia ? " yo" : ""}">—</td>`;
     const partes = [x.seguidores ? fmtK(x.seguidores) + " seguidores" : x.ok ? "perfil sin datos públicos" : "perfil enlazado", x.ultima ? `últ. publicación ${x.ultima}` : "", x.engagement != null ? `engagement ${pctTxt(x.engagement)}` : ""].filter(Boolean);
@@ -707,9 +841,41 @@ function informeHTML(mo) {
   .porque{display:grid;grid-template-columns:1fr 1.1fr;gap:20px;align-items:center}.porque p{font-size:13px;line-height:1.6;margin:0 0 10px}
   .lineas{margin:4px 0 10px;padding-left:18px;columns:2;font-size:12px;color:var(--tx2)}.firma{font-size:12.5px;border-top:1px solid var(--ln);padding-top:8px}
   h1.anexos{font-size:26px;color:var(--m1);margin:40px 0 0}h1.anexos small{display:block;font-size:12px;font-weight:400;color:var(--tx3)}
+  .ic{vertical-align:-3px;flex:none}.bi{vertical-align:-3px;flex:none}
+  .av{display:inline-grid;place-items:center;border-radius:8px;border:1px solid var(--ln);overflow:hidden;flex:none;padding:3px}.av img{max-width:100%;max-height:100%;object-fit:contain}
+  .av.ini{border-radius:50%;background:#94a3b8;color:#fff;font-weight:700;border:0;padding:0}.av.ini.yo{background:var(--m1)}
+  .leer{display:flex;align-items:center;gap:6px;margin:18px 0 6px;padding:12px;border-radius:12px;background:var(--bg2)}.leer>div{flex:1;text-align:center;color:var(--m1)}.leer b{display:block;color:var(--tx);font-size:12.5px;margin-top:4px}.leer span{display:block;font-size:10.5px;color:var(--tx3)}.leer .fl{color:#94a3b8;font-style:normal}
+  .sit{display:grid;grid-template-columns:230px 1fr;gap:14px;margin:12px 0}.sit .big{border-radius:12px;padding:16px}.sit-d{display:grid;gap:12px}
+  .msj{display:flex;gap:10px;align-items:flex-start}.msj .ic{margin-top:2px;flex:none}
+  .termo{padding:62px 8px 0}.tt{position:relative;height:14px;border-radius:7px;background:linear-gradient(90deg,#fee2e2,#fef3c7 50%,#dcfce7)}.tt>i{position:absolute;left:0;top:0;bottom:0;border-radius:7px;background:var(--m1);opacity:.9}
+  .mk{position:absolute;transform:translateX(-50%);text-align:center;white-space:nowrap}.mk b{display:block;font-size:12px}.mk em{display:block;font-style:normal;font-size:9.5px;color:var(--tx3)}
+  .mk.med{top:-32px}.mk.lid{top:-60px}.mk.dr{transform:translateX(-100%);text-align:right}.mk.iz{transform:none;text-align:left}.mk.dr::after{left:100%}.mk.iz::after{left:0}.mk.tu{top:18px}.mk.tu b{color:var(--m1);font-size:14px}.mk::after{content:"";position:absolute;left:50%;width:2px;background:var(--tx);transform:translateX(-50%)}.mk.med::after{top:30px;height:16px}.mk.lid::after{top:30px;height:44px}.mk.tu::after{top:-18px;height:18px;background:var(--m1)}
+  .esc{display:flex;justify-content:space-between;font-size:9.5px;color:var(--tx3);margin-top:38px}
+  .mini4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.mini4>div{border:1px solid var(--ln);border-radius:10px;padding:10px 12px;color:var(--m1)}.mini4 b{display:block;color:var(--tx);font-size:18px;margin-top:4px}.mini4 span{font-size:11px;color:var(--tx3)}
+  .caras{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.cara{border:1px solid var(--ln);border-radius:12px;padding:12px;break-inside:avoid}.cara.yo{border:2px solid var(--m1);grid-column:1/-1}
+  .cara-h{display:flex;gap:10px;align-items:center}.cara-h b{display:block;font-size:13.5px}.cara-h span{font-size:11px;color:var(--tx3)}
+  .cara-i{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;margin:10px 0 6px;font-size:11px;color:var(--tx3)}.cara-i b{font-size:18px;color:var(--tx)}.mt{height:8px;border-radius:4px;background:var(--bg2);overflow:hidden}.mt i{display:block;height:100%;background:#94a3b8;border-radius:4px}.cara.yo .mt i{background:var(--m1)}
+  .cara-d{display:grid;gap:3px;font-size:11.5px;color:var(--tx2)}.pf{color:var(--ok)}.pd{color:var(--mal)}.pf b,.pd b{color:var(--tx)}.stars{color:#f59e0b;letter-spacing:1px}.stars span{color:#e2e8f0}
+  .rank{display:grid;gap:6px}.rk{display:grid;grid-template-columns:28px auto minmax(160px,1.2fr) 2fr 34px;gap:8px;align-items:center;font-size:12px}.rk.yo .rn{color:var(--m1);font-weight:700}.rp{font-weight:700;color:var(--tx3)}
+  .rb{height:14px;background:var(--bg2);border-radius:0 4px 4px 0}.rb i{display:block;height:100%;background:#94a3b8;border-radius:0 4px 4px 0}.rk.yo .rb i{background:var(--m1)}.rk b{text-align:right}
+  .areas{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.area{border:1px solid var(--ln);border-top:4px solid;border-radius:12px;padding:12px;break-inside:avoid}.area.ok{border-top-color:var(--ok)}.area.par{border-top-color:#b45309}.area.mal{border-top-color:var(--mal)}.area.nd{border-top-color:#94a3b8}
+  .area-h{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;margin-bottom:8px}.area-i{width:34px;height:34px;border-radius:10px;background:var(--bg2);color:var(--m1);display:grid;place-items:center}.area-h b{display:block;font-size:13px}.area-h span{font-size:11px;color:var(--tx3)}
+  .area-e{font-size:11px!important;font-weight:700;white-space:nowrap}.area.ok .area-e{color:var(--ok)}.area.par .area-e{color:#92400e}.area.mal .area-e{color:var(--mal)}
+  .ba{display:grid;grid-template-columns:120px 1fr 30px;gap:8px;align-items:center;font-size:11.5px;margin:4px 0}.ba .bl small{display:block;font-size:9.5px;color:var(--tx3);white-space:normal}.ba b{text-align:right}
+  .bt{height:12px;background:var(--bg2);border-radius:0 4px 4px 0}.bt i{display:block;height:100%;border-radius:0 4px 4px 0}.ba.tu .bt i{background:var(--m1)}.ba.me .bt i{background:#cbd5e1}.ba.li .bt i{background:#64748b}.ba.tu{font-weight:700}
+  .area-o{font-size:11.5px;margin:8px 0 0;color:var(--tx2)}
+  .mm-w{overflow:hidden;display:flex;justify-content:center}.mm{position:relative;margin:4px auto}.mm>svg{position:absolute;left:0;top:0}
+  .mm-n{position:absolute;width:200px;border:2px solid;border-radius:12px;background:#fff;padding:8px 10px}.mm-h{display:flex;gap:6px;align-items:center;color:var(--m1)}.mm-h b{color:var(--tx);font-size:12px}.mm-e{display:block;font-size:11px;font-weight:700;margin:3px 0}.mm-n p{margin:0;font-size:11px;color:var(--tx2)}.mm-n .mm-m{color:var(--tx3);font-size:10.5px}
+  .mm-c{position:absolute;left:270px;top:170px;width:200px;height:120px;border-radius:60px;background:var(--m1);color:#fff;display:grid;place-items:center;align-content:center;gap:4px;text-align:center;padding:10px}.mm-c b{font-size:12.5px;line-height:1.2}.mm-c span{font-size:11px;opacity:.9}.mm-c .av{background:#fff!important}
+  .ley2{display:flex;gap:16px;justify-content:center;font-size:11px;color:var(--tx2);margin-top:6px}.ley2 i{display:inline-block;width:14px;height:4px;border-radius:2px;margin-right:5px;vertical-align:2px}
+  .paso .pn{width:34px!important;height:34px!important;border-radius:10px!important;background:var(--bg2)!important;color:var(--m1)!important}
+  .mx{display:grid;grid-template-columns:24px 1fr;grid-template-rows:1fr auto;gap:6px}.mx-y{writing-mode:vertical-rl;transform:rotate(180deg);text-align:center;font-size:10px;font-weight:700;color:var(--tx3);letter-spacing:.1em}
+  .mx-g{display:grid;grid-template-columns:1fr 1fr;gap:8px}.mx-c{border-radius:10px;padding:10px 12px;min-height:110px;break-inside:avoid}.mx-c b{display:block;font-size:12.5px}.mx-c em{display:block;font-style:normal;font-size:10.5px;color:var(--tx3);margin-bottom:4px}.mx-c ol{margin:0;padding-left:20px;font-size:11px;color:var(--tx2)}
+  .mx-c.ok{background:#dcfce7}.mx-c.m1{background:color-mix(in srgb,var(--m1) 10%,#fff)}.mx-c.par{background:#fef3c7}.mx-c.nd{background:#f1f5f9}.mx-x{grid-column:2;text-align:center;font-size:10px;font-weight:700;color:var(--tx3);letter-spacing:.1em}
+  .acc{position:relative;padding-left:34px!important}.acc .an{position:absolute;left:8px;top:8px;width:20px;height:20px;border-radius:50%;background:var(--m1);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center}
   @page{size:A4;margin:12mm 11mm}
   @media print{.pag{padding:0}.salto{break-before:page}.blq{break-inside:avoid}.portada{margin:-12mm -11mm 0;padding:40mm 16mm 20mm}h2{break-after:avoid}tr,.card{break-inside:avoid}}
-  @media screen and (max-width:760px){.kpis,.graf,.grid,.diag,.hero,.costes,.ruta,.porque,.evid{grid-template-columns:1fr}}`;
+  @media screen and (max-width:760px){.kpis,.graf,.grid,.diag,.hero,.costes,.ruta,.porque,.evid,.sit,.mini4,.caras,.areas,.mx-g{grid-template-columns:1fr}.mm-w{overflow-x:auto;justify-content:flex-start}}`;
 
   const clave = filas.filter((f) => ["score", "rating", "reviews", "webscore", "seguidores", "senales"].includes(f.mt.k));
 
@@ -737,6 +903,8 @@ function informeHTML(mo) {
   if (wb.estado === "desventaja" && wb.lider) costes.push({ cifra: `${wb.brecha} pts`, texto: `de diferencia en web y SEO con ${wb.lider.nombre} (${Math.round(wb.mejor)}/100 frente a tus ${wb.vals[0]}/100).` });
   const resumen = `Frente a ${rv.length === 1 ? "tu competidor" : `tus ${rv.length} competidores`}, <b>${eH(yo.nombre)}</b> lidera en <b>${cuenta("lidera")}</b> de ${filas.filter((f) => f.estado !== "sin datos").length} indicadores comparables, va a la par en <b>${cuenta("a la par")}</b> y por detrás en <b>${cuenta("por detrás") + cuenta("último")}</b>${cuenta("último") ? ` (en ${cuenta("último")} es el último)` : ""}. Ocupa la posición <b>#${yo.posicion}</b> de ${mo.totalMercado} negocios del mercado analizado por ${eH(mo.criterio.toLowerCase())}.`;
 
+  const ejecutivo = bloqueEjecutivo({ mo, ac, etapas, ruta, dg, costes, yo, rv, mc, liderIdx, brechaLider, mediaRiv, enDesv, enVent, lista });
+
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${eH(nombreInforme())}</title><style>${css}</style></head><body>
   <section class="portada">
     ${logoHTML}
@@ -746,58 +914,7 @@ function informeHTML(mo) {
     <div class="meta"><div><b>${mo.ns.length}</b>negocios comparados</div><div><b>#${yo.posicion}</b>de ${mo.totalMercado} en el mercado</div><div><b>${fmtN(mo.ns.reduce((a, n) => a + (n.r.muestra || 0), 0))}</b>reseñas analizadas</div><div><b>${eH(fecha)}</b>fecha del análisis</div>${mc.por ? `<div><b>${eH(mc.por)}</b>preparado por</div>` : ""}</div>
   </section>
   <div class="pag">
-    <div class="blq"><h2>La situación en un minuto<small>Índice competitivo 0-100: media de seis áreas que deciden si un cliente te elige a ti o a tu competencia</small></h2>
-    <div class="hero">
-      <div class="big"><span>Tu índice competitivo</span><b>${ac.indices[0]}<small>/100</small></b><em>${brechaLider > 0 ? `${brechaLider} puntos por debajo de ${eH(liderIdx.n.nombre)}` : "Encabezas a tu competencia"}</em></div>
-      <div class="kpi2"><span>Líder del grupo</span><b>${liderIdx.v}</b><em>${eH(liderIdx.n.nombre)}</em></div>
-      <div class="kpi2"><span>Media de tu competencia</span><b>${mediaRiv}</b><em>${ac.indices[0] >= mediaRiv ? "estás por encima" : `te faltan ${mediaRiv - ac.indices[0]} puntos`}</em></div>
-      <div class="kpi2"><span>Áreas en desventaja</span><b>${enDesv.length}<small> de ${ac.areas.length}</small></b><em>${enVent.length ? `ventaja en ${enVent.length}` : "sin ventajas claras"}</em></div>
-      <div class="kpi2"><span>Posición en el mercado</span><b>#${yo.posicion}</b><em>de ${mo.totalMercado} negocios</em></div>
-    </div>
-    <div class="msj ${enDesv.length >= 2 || brechaLider >= 15 ? "alerta" : "ok"}"><b>${enDesv.length >= 2 || brechaLider >= 15 ? "Hoy compites en desventaja." : enDesv.length ? "Compites de igual a igual, con puntos débiles concretos." : "Hoy compites con ventaja: el reto es mantenerla."}</b>
-      ${enDesv.length ? `Tu competencia te supera en ${enDesv.map((a) => minus(a.t)).join(", ")}. Cada una de estas brechas es un punto del recorrido en el que un cliente potencial puede elegir a otro negocio.` : "La competencia no se detiene: los datos de este informe deben revisarse cada trimestre."}</div>
-
-    </div><div class="blq">
-    <h2>Mapa de brechas<small>Dónde estás frente a tu competencia en cada área (0 = nada implantado, 100 = excelente)</small></h2>
-    <div class="card">${svgBrechas(mo, ac)}</div>
-
-    </div><div class="blq">
-    <h2>El recorrido de tu cliente<small>Las cinco etapas por las que pasa un cliente antes de comprarte, y cómo estás en cada una frente a tu competencia</small></h2>
-    ${flujoRecorrido(etapas)}
-
-    </div><div class="blq">
-    <h2>Ranking competitivo<small>Índice competitivo de cada negocio comparado</small></h2>
-    <div class="card">${svgRanking(mo, ac)}</div>
-
-    </div><div class="blq salto">
-    <h2>El coste de no actuar<small>Lo que ya hace tu competencia y hoy tú no</small></h2>
-    <div class="costes">${costes.length ? costes.map((c) => `<div class="coste"><b>${eH(c.cifra)}</b><span>${eH(c.texto)}</span></div>`).join("") : `<p class="nd">No se detectan ventajas de tu competencia sobre ti en los datos disponibles.</p>`}</div>
-
-    </div><div class="blq">
-    <h2>Lo bueno, lo a mejorar y lo a innovar</h2>
-    <div class="diag">
-      <div class="card b"><h3>Lo bueno</h3>${lista(dg.bueno.slice(0, 3), "Todavía no destacas claramente en ningún indicador.")}</div>
-      <div class="card m"><h3>A mejorar</h3>${lista(dg.mejorar.slice(0, 3), "No hay diferencias significativas en tu contra.")}</div>
-      <div class="card i"><h3>A innovar</h3>${lista(dg.innovar.slice(0, 3), "Sin oportunidades claras en los datos disponibles.")}</div>
-    </div>
-
-    </div><div class="blq salto">
-    <h2>Hoja de ruta de mejora<small>Acciones priorizadas, con su objetivo medible y el área de trabajo que las resuelve</small></h2>
-    <div class="ruta">${["0 – 30 días · Resultados rápidos", "30 – 90 días · Consolidar", "90 – 180 días · Escalar"].map((h, i) => `<div class="hz"><div class="hzt"><b>${i + 1}</b>${eH(h)}</div>${ruta.filter((x) => x.h === i).map((x) => `<div class="acc"><b>${eH(x.t)}</b><span class="kp">Objetivo: ${eH(x.kpi)}</span><span class="sv">${eH(x.s)}</span></div>`).join("") || `<p class="nd">Sin acciones en este horizonte.</p>`}</div>`).join("")}</div>
-
-    </div><div class="blq">
-    <h2>Por qué mejorar no es opcional<small>La competencia se mide y se mueve cada mes</small></h2>
-    <div class="porque">
-      <div>${svgCiclo()}</div>
-      <div>
-        <p>Los negocios que lideran tu mercado no lo hacen por una acción puntual, sino porque <b>miden, comparan y mejoran de forma continua</b> su reputación, su web, su atención y sus canales de venta.</p>
-        <p>Ese trabajo no es un servicio externo ni un extra: es parte de la gestión de cualquier negocio, del autónomo a la gran empresa, que quiera <b>seguir mejorando, mantenerse y escalar</b>.</p>
-        <ul class="lineas">${[...new Set(ruta.map((x) => x.s))].map((s) => `<li>${eH(s)}</li>`).join("")}</ul>
-        ${mc.por ? `<p class="firma">Preparado por <b>${eH(mc.por)}</b>, tu equipo para ejecutar y medir este plan.</p>` : ""}
-      </div>
-    </div>
-
-    </div>
+    ${ejecutivo}
     <h1 class="anexos salto">Anexos<small>El detalle que respalda cada conclusión</small></h1>
     <h2>A. Negocios comparados<small>Tu empresa y la competencia elegida</small></h2>
     <table class="tb"><thead><tr><th></th>${cols}</tr></thead><tbody>
