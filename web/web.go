@@ -32,6 +32,7 @@ type Server struct {
 	tmpl map[string]*template.Template
 	srv  *http.Server
 	svc  *Service
+	auth *Auth
 }
 
 func New(svc *Service, addr string) (*Server, error) {
@@ -57,6 +58,13 @@ func New(svc *Service, addr string) (*Server, error) {
 			MaxHeaderBytes:    1 << 20,
 		},
 	}
+
+	auth, err := NewAuth(svc.dataFolder)
+	if err != nil {
+		return nil, fmt.Errorf("acceso: %w", err)
+	}
+
+	ans.auth = auth
 
 	staticFS, err := fs.Sub(static, "static")
 	if err != nil {
@@ -85,6 +93,10 @@ func New(svc *Service, addr string) (*Server, error) {
 		ans.viewJob(w, r)
 	})
 	mux.HandleFunc("/", ans.app)
+	mux.HandleFunc("GET /login", ans.login)
+	mux.HandleFunc("/api/v1/sesion", auth.apiSesion)
+	mux.HandleFunc("POST /api/v1/sesion/contrasena", auth.apiCambiarClave)
+	mux.HandleFunc("POST /api/v1/sesion/2fa/{accion}", auth.apiDosPasos)
 	mux.HandleFunc("/clasico", ans.index)
 
 	// api routes
@@ -165,7 +177,7 @@ func New(svc *Service, addr string) (*Server, error) {
 		ans.download(w, r)
 	})
 
-	handler := securityHeaders(utf8Body(mux))
+	handler := securityHeaders(utf8Body(auth.Proteger(mux)))
 	ans.srv.Handler = handler
 
 	tmplsKeys := []string{
@@ -756,6 +768,11 @@ func securityHeaders(next http.Handler) http.Handler {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("X-XSS-Protection", "1; mode=block")
+		w.Header().Set("Referrer-Policy", "same-origin")
+
+		if esHTTPS(r) {
+			w.Header().Set("Strict-Transport-Security", "max-age=31536000")
+		}
 		w.Header().Set("Content-Security-Policy",
 			"default-src 'self'; "+
 				"script-src 'self' cdn.redoc.ly cdnjs.cloudflare.com 'unsafe-inline' 'unsafe-eval'; "+

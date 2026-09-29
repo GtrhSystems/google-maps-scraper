@@ -223,6 +223,26 @@ func (s *Server) apiGetLeads(w http.ResponseWriter, r *http.Request) {
 }
 
 // app serves the Spanish single-page UI.
+// login sirve la pantalla de acceso (si ya hay sesión completa, va a la aplicación).
+func (s *Server) login(w http.ResponseWriter, r *http.Request) {
+	if _, u := s.auth.sesionDe(tokenDe(r)); u != nil && !u.DebeCambiar {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+
+		return
+	}
+
+	page, err := static.ReadFile("static/app/login.html")
+	if err != nil {
+		http.Error(w, "missing login", http.StatusInternalServerError)
+
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = w.Write(page)
+}
+
 func (s *Server) app(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)

@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Acceso · Buscador de negocios</title>
+<style>
+:root { --bg:#f5f7f9; --surface:#fff; --surface-2:#f0f3f6; --line:#e1e6eb; --line-strong:#cdd5dd; --text:#16202a; --text-2:#4d5b69; --text-3:#7b8896;
+  --accent:#0891a6; --accent-strong:#06798b; --accent-soft:#e3f4f7; --on-accent:#fff; --ok:#1e7d4f; --ok-soft:#e4f3ea; --warn:#9a6400; --warn-soft:#fbf1dd; --err:#b3261e; --err-soft:#fbe7e5; --r:8px; }
+:root[data-theme="dark"] { --bg:#0f1419; --surface:#161d24; --surface-2:#1c252e; --line:#26313c; --line-strong:#34414e; --text:#e6ebf0; --text-2:#a6b3bf; --text-3:#75838f;
+  --accent:#2bb3c6; --accent-strong:#52c6d6; --accent-soft:#11313a; --on-accent:#06222a; --ok:#5cc48f; --ok-soft:#10301f; --warn:#e0a84a; --warn-soft:#33260d; --err:#f08a82; --err-soft:#3a1714; }
+* { box-sizing:border-box } html,body { margin:0; height:100% }
+body { background:var(--bg); color:var(--text); font:14px/1.5 Inter,system-ui,-apple-system,"Segoe UI",sans-serif; -webkit-font-smoothing:antialiased; display:grid; place-items:center; padding:20px }
+svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; flex:none }
+.caja { width:400px; max-width:100%; background:var(--surface); border:1px solid var(--line); border-radius:12px; box-shadow:0 10px 30px rgba(16,24,40,.08); padding:28px }
+.marca { display:flex; gap:12px; align-items:center; margin-bottom:22px }
+.marca .m { width:40px; height:40px; border-radius:var(--r); background:var(--accent); color:var(--on-accent); display:grid; place-items:center }
+.marca h1 { font-size:16px; margin:0 } .marca p { margin:0; font-size:12px; color:var(--text-3) }
+h2 { font-size:19px; margin:0 0 4px } .sub { margin:0 0 18px; color:var(--text-2); font-size:13px }
+label { display:block; font-size:12.5px; font-weight:600; margin:12px 0 5px }
+.campo { position:relative } .campo input { width:100%; height:42px; border:1px solid var(--line-strong); border-radius:var(--r); background:var(--surface); color:var(--text); padding:0 42px 0 12px; font:inherit; font-size:15px }
+.campo input:focus { outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent) }
+.campo .ver { position:absolute; right:4px; top:4px; width:34px; height:34px; border:0; background:none; color:var(--text-3); cursor:pointer; border-radius:6px; display:grid; place-items:center }
+.campo .ver:hover { background:var(--surface-2) }
+.cod { letter-spacing:.4em; text-align:center; font-size:22px!important; font-variant-numeric:tabular-nums }
+.btn { width:100%; height:44px; margin-top:18px; border:0; border-radius:var(--r); background:var(--accent); color:var(--on-accent); font:inherit; font-size:15px; font-weight:600; cursor:pointer; display:flex; gap:8px; align-items:center; justify-content:center }
+.btn:hover { background:var(--accent-strong) } .btn:disabled { opacity:.6; cursor:wait }
+.link { background:none; border:0; color:var(--accent); cursor:pointer; font:inherit; font-size:13px; padding:0; margin-top:12px }
+.msg { display:none; gap:8px; align-items:flex-start; border-radius:var(--r); padding:10px 12px; font-size:13px; margin-top:14px }
+.msg.err { display:flex; background:var(--err-soft); color:var(--err) } .msg.ok { display:flex; background:var(--ok-soft); color:var(--ok) } .msg.warn { display:flex; background:var(--warn-soft); color:var(--warn) }
+.req { list-style:none; margin:10px 0 0; padding:0; font-size:12.5px; color:var(--text-3); display:grid; gap:3px }
+.req li { display:flex; gap:6px; align-items:center } .req li.si { color:var(--ok) } .req svg { width:14px; height:14px }
+.fuerza { height:6px; border-radius:3px; background:var(--surface-2); margin-top:8px; overflow:hidden } .fuerza i { display:block; height:100%; width:0; transition:width .2s, background .2s }
+.pie { margin-top:22px; padding-top:14px; border-top:1px solid var(--line); font-size:11.5px; color:var(--text-3); display:flex; gap:6px; align-items:center }
+.paso { display:none } .paso.on { display:block }
+</style>
+</head>
+<body>
+<main class="caja">
+  <div class="marca">
+    <div class="m"><svg viewBox="0 0 24 24"><path d="M18 8c0 3.613-3.869 7.429-5.393 8.795a1 1 0 0 1-1.214 0C9.87 15.429 6 11.613 6 8a6 6 0 0 1 12 0"/><circle cx="12" cy="8" r="2"/><path d="M8.714 14h-3.71a1 1 0 0 0-.948.683l-2.004 6A1 1 0 0 0 3 22h18a1 1 0 0 0 .948-1.316l-2-6a1 1 0 0 0-.949-.684h-3.712"/></svg></div>
+    <div><h1>Buscador de negocios</h1><p>SystemIA · B2B</p></div>
+  </div>
+
+  <form class="paso on" id="pAcceso" autocomplete="on" novalidate>
+    <h2>Iniciar sesión</h2>
+    <p class="sub">Accede con tu usuario y contraseña.</p>
+    <label for="usuario">Usuario</label>
+    <div class="campo"><input id="usuario" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required></div>
+    <label for="clave">Contraseña</label>
+    <div class="campo"><input id="clave" name="password" type="password" autocomplete="current-password" required><button type="button" class="ver" data-ver="clave" aria-label="Mostrar contraseña"><svg viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+    <div class="msg warn" id="mayus" style="display:none">Bloq Mayús está activado.</div>
+    <button class="btn" id="bAcceso"><svg viewBox="0 0 24 24"><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/></svg>Entrar</button>
+    <div class="msg" id="eAcceso"></div>
+  </form>
+
+  <form class="paso" id="pCodigo" novalidate>
+    <h2>Verificación en dos pasos</h2>
+    <p class="sub">Escribe el código de 6 cifras de tu aplicación de autenticación.</p>
+    <label for="codigo">Código</label>
+    <div class="campo"><input id="codigo" class="cod" inputmode="numeric" autocomplete="one-time-code" maxlength="11"></div>
+    <button class="btn" id="bCodigo">Verificar</button>
+    <button type="button" class="link" id="lRecupera">¿Sin acceso al móvil? Usa un código de recuperación</button>
+    <div class="msg" id="eCodigo"></div>
+  </form>
+
+  <form class="paso" id="pCambio" novalidate>
+    <h2>Crea tu contraseña</h2>
+    <p class="sub">Por seguridad, cambia la contraseña inicial antes de continuar.</p>
+    <input type="text" name="username" autocomplete="username" id="usuario2" hidden>
+    <label for="nueva">Nueva contraseña</label>
+    <div class="campo"><input id="nueva" type="password" autocomplete="new-password"><button type="button" class="ver" data-ver="nueva" aria-label="Mostrar contraseña"><svg viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+    <div class="fuerza"><i id="fuerza"></i></div>
+    <ul class="req" id="req">
+      <li data-r="len"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>Al menos 12 caracteres</li>
+      <li data-r="mix"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>Letras y números o símbolos</li>
+      <li data-r="usr"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>No contiene el nombre de usuario</li>
+    </ul>
+    <label for="repite">Repite la contraseña</label>
+    <div class="campo"><input id="repite" type="password" autocomplete="new-password"></div>
+    <button class="btn" id="bCambio">Guardar y entrar</button>
+    <div class="msg" id="eCambio"></div>
+  </form>
+
+  <div class="pie"><svg viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>Conexión cifrada · la sesión caduca tras 8 h sin actividad</div>
+</main>
+<script>
+(function () {
+  "use strict";
+  try { var t = localStorage.getItem("tema"); if (t === "dark" || (!t && matchMedia("(prefers-color-scheme: dark)").matches)) document.documentElement.dataset.theme = "dark"; } catch (e) {}
+  var $ = function (s) { return document.querySelector(s); };
+  var actual = "";
+  var mostrar = function (id) { document.querySelectorAll(".paso").forEach(function (p) { p.classList.toggle("on", p.id === id); }); var f = document.querySelector("#" + id + " input:not([hidden])"); if (f) f.focus(); };
+  var aviso = function (id, txt, tipo) { var e = $(id); e.className = "msg" + (txt ? " " + (tipo || "err") : ""); e.textContent = txt || ""; };
+  var entrar = function () { location.replace("/" + (sessionStorage.getItem("b2b.volver") || "")); try { sessionStorage.removeItem("b2b.volver"); } catch (e) {} };
+  var enviar = async function (url, datos, metodo) {
+    var r = await fetch(url, { method: metodo || "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify(datos) });
+    var j = {}; try { j = await r.json(); } catch (e) {}
+    if (!r.ok) throw new Error(j.message || "No se pudo completar la operación");
+    return j;
+  };
+  var ocupado = function (b, si) { b.disabled = si; };
+
+  document.querySelectorAll("[data-ver]").forEach(function (b) { b.onclick = function () { var i = document.getElementById(b.dataset.ver); i.type = i.type === "password" ? "text" : "password"; b.setAttribute("aria-label", i.type === "password" ? "Mostrar contraseña" : "Ocultar contraseña"); i.focus(); }; });
+  $("#clave").addEventListener("keyup", function (e) { $("#mayus").style.display = e.getModifierState && e.getModifierState("CapsLock") ? "flex" : "none"; });
+
+  var acceder = async function (codigo) {
+    var datos = { usuario: $("#usuario").value.trim(), contrasena: $("#clave").value, codigo: codigo || "" };
+    var j = await enviar("/api/v1/sesion", datos);
+    if (j.requiere_codigo) { mostrar("pCodigo"); return; }
+    if (j.debe_cambiar) { actual = datos.contrasena; $("#usuario2").value = datos.usuario; mostrar("pCambio"); return; }
+    $("#clave").value = ""; entrar();
+  };
+
+  $("#pAcceso").onsubmit = async function (e) {
+    e.preventDefault(); aviso("#eAcceso");
+    if (!$("#usuario").value.trim() || !$("#clave").value) return aviso("#eAcceso", "Escribe tu usuario y tu contraseña.");
+    ocupado($("#bAcceso"), true);
+    try { await acceder(); } catch (err) { aviso("#eAcceso", err.message); $("#clave").select(); } finally { ocupado($("#bAcceso"), false); }
+  };
+  $("#pCodigo").onsubmit = async function (e) {
+    e.preventDefault(); aviso("#eCodigo");
+    var c = $("#codigo").value.trim(); if (!c) return aviso("#eCodigo", "Escribe el código.");
+    ocupado($("#bCodigo"), true);
+    try { await acceder(c); } catch (err) { aviso("#eCodigo", err.message); $("#codigo").select(); } finally { ocupado($("#bCodigo"), false); }
+  };
+  $("#lRecupera").onclick = function () { var c = $("#codigo"); c.classList.remove("cod"); c.removeAttribute("inputmode"); c.placeholder = "XXXXX-XXXXX"; $("label[for=codigo]").textContent = "Código de recuperación (se puede usar una sola vez)"; c.focus(); };
+
+  var reglas = function () {
+    var v = $("#nueva").value, u = ($("#usuario2").value || "").toLowerCase();
+    var r = { len: v.length >= 12, mix: /\p{L}/u.test(v) && /[^\p{L}]/u.test(v), usr: !!v && (!u || v.toLowerCase().indexOf(u) < 0) };
+    document.querySelectorAll("#req li").forEach(function (li) { li.classList.toggle("si", r[li.dataset.r]); });
+    var p = (r.len ? 1 : 0) + (r.mix ? 1 : 0) + (v.length >= 16 ? 1 : 0) + (/[^\p{L}\p{N}]/u.test(v) ? 1 : 0);
+    var f = $("#fuerza"); f.style.width = (v ? Math.max(10, p * 25) : 0) + "%"; f.style.background = p >= 4 ? "var(--ok)" : p >= 2 ? "var(--warn)" : "var(--err)";
+    return r.len && r.mix && r.usr;
+  };
+  $("#nueva").oninput = reglas;
+  $("#pCambio").onsubmit = async function (e) {
+    e.preventDefault(); aviso("#eCambio");
+    if (!reglas()) return aviso("#eCambio", "La contraseña no cumple los requisitos.");
+    if ($("#nueva").value !== $("#repite").value) return aviso("#eCambio", "Las contraseñas no coinciden.");
+    ocupado($("#bCambio"), true);
+    try { await enviar("/api/v1/sesion/contrasena", { actual: actual, nueva: $("#nueva").value }); actual = ""; aviso("#eCambio", "Contraseña guardada. Entrando…", "ok"); setTimeout(entrar, 600); }
+    catch (err) { aviso("#eCambio", err.message); } finally { ocupado($("#bCambio"), false); }
+  };
+  if (new URLSearchParams(location.search).get("salida") === "1") aviso("#eAcceso", "Has cerrado la sesión.", "ok");
+  if (new URLSearchParams(location.search).get("caducada") === "1") aviso("#eAcceso", "Tu sesión ha caducado. Vuelve a entrar.", "warn");
+  $("#usuario").focus();
+})();
+</script>
+</body>
+</html>
