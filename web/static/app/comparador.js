@@ -55,7 +55,8 @@ function compPredeterminados() {
   if (!mia) return [];
   const p = ranking.indexOf(mia);
   const sel = [];
-  const add = (m) => { if (m && m !== mia && !sel.includes(m) && sel.length < COMP_MAX) sel.push(m); };
+  // Otros locales de la misma cadena no son competencia: son la misma empresa.
+  const add = (m) => { if (m && m !== mia && plano(m.l.title) !== plano(mia.l.title) && !sel.includes(m) && sel.length < COMP_MAX) sel.push(m); };
   add(ranking[0]);
   for (let i = p - 1; i >= Math.max(0, p - 3); i--) add(ranking[i]);
   for (let i = p + 1; sel.length < COMP_MAX && i < ranking.length; i++) add(ranking[i]);
@@ -79,6 +80,8 @@ function pintarComparador() {
   const d = c.datos;
   const analizando = d && d.estado === "analizando";
   const marca = marcaEfectiva();
+  const ven = vendedor();
+  const vista = c.vista === "comercial" ? "comercial" : "informe";
 
   $("#panel").innerHTML = `
   <div class="cmp">
@@ -115,25 +118,40 @@ function pintarComparador() {
         </div>
         <div class="hint">El logotipo y los colores se detectan en tu web al analizar; puedes cambiarlos.</div>
       </div>
+      <div class="cmp-blq">
+        <h4>4 · Tu equipo comercial <span class="none">(documentación comercial)</span></h4>
+        <div class="cmp-campos">
+          <input class="field" id="venEmp" placeholder="Tu empresa" value="${esc(ven.empresa || "")}">
+          <div class="cmp-fila" style="margin:0"><input class="field" id="venAse" placeholder="Asesor comercial" value="${esc(ven.asesor || "")}" style="flex:1"><label class="lbl-in">Color <input type="color" id="venC1" value="${ven.c1 || "#1e40af"}"></label></div>
+          <div class="cmp-fila" style="margin:0"><input class="field" id="venTel" placeholder="Teléfono o WhatsApp" value="${esc(ven.telefono || "")}" style="flex:1"><input class="field" id="venMail" placeholder="Email" value="${esc(ven.email || "")}" style="flex:1"></div>
+          <input class="field" id="venWeb" placeholder="Web o enlace de agenda" value="${esc(ven.web || "")}">
+        </div>
+        <div class="hint">Se usa en los mensajes, guiones y propuestas. Se guarda en este navegador para todos los clientes.</div>
+      </div>
       <div class="cmp-acc">
         <button class="btn btn-primary" id="cmpGo"${!mia || !rivales.length || analizando ? " disabled" : ""}><i data-lucide="${analizando ? "loader-circle" : "scan-search"}"${analizando ? ' class="spin"' : ""}></i>${analizando ? `Analizando webs ${d.hechos} de ${d.total}…` : d ? "Actualizar análisis" : "Analizar y generar informe"}</button>
       </div>
     </div>
-    <div class="cmp-inf" id="cmpInf">${mia && rivales.length ? (analizando ? `<div class="empty"><div class="ico"><i data-lucide="loader-circle" class="spin"></i></div><h3>Analizando a fondo las webs</h3><p>${d.hechos} de ${d.total} webs revisadas. El informe aparecerá al terminar, con todos los datos.</p></div>` : d ? `<div class="cmp-bar"><b>Informe</b><span class="none">Vista previa · así se descarga</span>
-        <button class="btn btn-sm" id="cmpHTML"><i data-lucide="file-code"></i>Descargar HTML</button>
-        <button class="btn btn-sm btn-primary" id="cmpPDF"><i data-lucide="file-text"></i>Descargar PDF</button></div>
-        <iframe id="cmpFrame" title="Informe de competencia"></iframe>` : `<div class="empty"><div class="ico"><i data-lucide="scale"></i></div><h3>Listo para comparar</h3><p>Pulsa «Analizar y generar informe»: se revisarán a fondo las webs y las reseñas de los ${rivales.length + 1} negocios.</p></div>`)
+    <div class="cmp-inf" id="cmpInf">${mia && rivales.length ? (analizando ? `<div class="empty"><div class="ico"><i data-lucide="loader-circle" class="spin"></i></div><h3>Analizando a fondo las webs</h3><p>${d.hechos} de ${d.total} webs revisadas. El informe aparecerá al terminar, con todos los datos.</p></div>` : d ? `<div class="cmp-bar">
+        <button class="btn btn-sm${vista === "informe" ? " btn-primary" : " btn-ghost"}" data-vista="informe"><i data-lucide="scale"></i>Informe competitivo</button>
+        <button class="btn btn-sm${vista === "comercial" ? " btn-primary" : " btn-ghost"}" data-vista="comercial"><i data-lucide="handshake"></i>Documentación comercial</button>
+        <span class="none">Vista previa · así se descarga</span>
+        <button class="btn btn-sm" id="cmpHTML"><i data-lucide="file-code"></i>HTML</button>
+        <button class="btn btn-sm btn-primary" id="cmpPDF"><i data-lucide="file-text"></i>PDF</button></div>
+        <iframe id="cmpFrame" title="${vista === "comercial" ? "Documentación comercial" : "Informe de competencia"}"></iframe>` : `<div class="empty"><div class="ico"><i data-lucide="scale"></i></div><h3>Listo para comparar</h3><p>Pulsa «Analizar y generar informe»: se revisarán a fondo las webs y las reseñas de los ${rivales.length + 1} negocios.</p></div>`)
       : `<div class="empty"><div class="ico"><i data-lucide="scale"></i></div><h3>Comparador de competencia</h3><p>Elige tu empresa: se propondrán como competencia el nº 1 de la lista y los 3 negocios inmediatamente por encima de ti.</p></div>`}</div>
   </div>`;
   icons();
   enlazarComparador();
   if (d && mia && rivales.length && !analizando) {
-    const doc = informeHTML(modeloInforme());
+    const com = vista === "comercial";
+    const doc = com ? comercialHTML(modeloInforme()) : informeHTML(modeloInforme());
+    const nombre = com ? nombreComercial() : nombreInforme();
     const fr = $("#cmpFrame");
     fr.srcdoc = doc;
     fr.onload = () => { try { fr.style.height = fr.contentDocument.documentElement.scrollHeight + 20 + "px"; } catch (e) { /* vista previa sin autoajuste */ } };
-    $("#cmpHTML").onclick = () => descargar(new Blob([doc], { type: "text/html;charset=utf-8" }), nombreInforme() + ".html");
-    $("#cmpPDF").onclick = () => descargarPDF(doc);
+    $("#cmpHTML").onclick = () => descargar(new Blob([doc], { type: "text/html;charset=utf-8" }), nombre + ".html");
+    $("#cmpPDF").onclick = () => descargarPDF(doc, nombre);
   }
 }
 
@@ -177,6 +195,9 @@ function enlazarComparador() {
     r.readAsDataURL(f);
   };
   const go = $("#cmpGo"); if (go) go.onclick = () => compAnalizar();
+  document.querySelectorAll("[data-vista]").forEach((b) => (b.onclick = () => { c.vista = b.dataset.vista; rep(); }));
+  const ven = (id, k) => { const el = $(id); if (el) el.onchange = () => { guardarVendedor({ ...vendedor(), [k]: el.value.trim() }); if (c.vista === "comercial") rep(); }; };
+  ven("#venEmp", "empresa"); ven("#venAse", "asesor"); ven("#venC1", "c1"); ven("#venTel", "telefono"); ven("#venMail", "email"); ven("#venWeb", "web");
 }
 
 /* ================= análisis ================= */
@@ -301,6 +322,8 @@ function modeloInforme() {
     };
   };
   const ns = [mia, ...rivales].map(neg);
+  // Cadenas con varios locales: el mismo nombre se distingue por su calle.
+  ns.forEach((n) => { if (ns.some((o) => o !== n && plano(o.l.title) === plano(n.l.title)) && n.l.address) n.nombre = `${n.l.title} (${n.l.address.split(",")[0].trim()})`; });
   return { c, d, ns, marca: marcaEfectiva(), fecha: new Date(), totalMercado: ranking.length, busqueda: S.res.job, criterio: CRITERIOS[c.criterio][0], mercado: todas };
 }
 
@@ -974,16 +997,16 @@ function descargar(blob, nombre) {
   setTimeout(() => URL.revokeObjectURL(a.href), 3000);
 }
 
-async function descargarPDF(doc) {
+async function descargarPDF(doc, nombre = nombreInforme()) {
   const b = $("#cmpPDF");
   b.disabled = true;
   const txt = b.innerHTML;
   b.innerHTML = `<i data-lucide="loader-circle" class="spin"></i>Generando PDF…`;
   icons();
   try {
-    const r = await fetch(`/api/v1/pdf?nombre=${encodeURIComponent(nombreInforme())}`, { method: "POST", headers: { "Content-Type": "text/html; charset=utf-8" }, body: doc });
+    const r = await fetch(`/api/v1/pdf?nombre=${encodeURIComponent(nombre)}`, { method: "POST", headers: { "Content-Type": "text/html; charset=utf-8" }, body: doc });
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).message || r.statusText);
-    descargar(await r.blob(), nombreInforme() + ".pdf");
+    descargar(await r.blob(), nombre + ".pdf");
     toast("PDF descargado");
   } catch (e) { toast("No se pudo generar el PDF: " + e.message, true); }
   finally { b.disabled = false; b.innerHTML = txt; icons(); }

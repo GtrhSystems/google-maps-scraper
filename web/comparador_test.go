@@ -8,6 +8,7 @@ import (
 	"image/color"
 	pngenc "image/png"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -21,6 +22,32 @@ func TestClaveFicha(t *testing.T) {
 
 	if k := claveFicha("https://maps.google.com/?cid=123", "Café Niño"); k != "t:cafe nino" {
 		t.Errorf("sin ficha: %q", k)
+	}
+}
+
+func TestLeerResenasSinDuplicados(t *testing.T) {
+	// El mismo negocio en dos consultas del trabajo: dos filas con reseñas que se solapan.
+	link := "https://www.google.com/maps/place/X/data=!4m7!3m6!1s0xabc:0xdef!8m2"
+	fila := func(ids ...string) string {
+		var rs []string
+		for _, id := range ids {
+			rs = append(rs, `{""review_id"":""`+id+`"",""Rating"":1,""Description"":""mal""}`)
+		}
+
+		return `"` + link + `",X,"[` + strings.Join(rs, ",") + `]"`
+	}
+	p := t.TempDir() + "/r.csv"
+	if err := os.WriteFile(p, []byte("link,title,user_reviews\n"+fila("a", "b", "c")+"\n"+fila("a", "b")+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	m, err := leerResenas(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if n := len(m["0xabc:0xdef"]); n != 3 {
+		t.Errorf("reseñas = %d; quiero 3 (sin contar dos veces las repetidas)", n)
 	}
 }
 

@@ -97,6 +97,8 @@ func leerResenas(path string) (map[string][]Resena, error) {
 	}
 
 	out := map[string][]Resena{}
+	// Un mismo negocio puede salir en varias consultas del trabajo: sus reseñas se cuentan una vez.
+	vistas := map[string]map[string]bool{}
 
 	for {
 		row, err := r.Read()
@@ -109,7 +111,11 @@ func leerResenas(path string) (map[string][]Resena, error) {
 		}
 
 		clave := claveFicha(get(row, "link"), get(row, "title"))
-		visto := map[string]bool{}
+		if vistas[clave] == nil {
+			vistas[clave] = map[string]bool{}
+		}
+
+		visto := vistas[clave]
 
 		for _, k := range []string{"user_reviews", "user_reviews_extended"} {
 			var rs []raw
